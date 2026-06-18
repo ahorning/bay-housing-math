@@ -4,7 +4,7 @@ A buy-vs-rent calculator for the San Francisco East Bay. It models the *true* lo
 cost of buying a home against renting and investing the difference — with the local tax
 rules that generic online calculators get wrong.
 
-**Live:** https://ahorning.github.io/bay-housing-math/ *(enable GitHub Pages — see below)*
+**Live:** https://ahorning.github.io/bay-housing-math/
 
 ## What it models
 
@@ -26,25 +26,32 @@ rules that generic online calculators get wrong.
 
 | Preset | Home price | Notes |
 |---|---|---|
-| East Bay starter | $1.0M | 10% down, mortgage insurance, $2,800 rent |
-| Berkeley / hills | $1.5M | 20% down, $400/mo insurance (wildfire), $3,600 rent |
-| Rockridge / Piedmont | $1.8M | higher appreciation, longer default horizon |
+| East Bay starter | $1.0M | 10% down, mortgage insurance, $3,800 rent |
+| Berkeley / hills | $1.5M | 20% down, $400/mo insurance (wildfire), $5,000 rent |
+| Rockridge / Piedmont | $1.8M | 20% down, higher appreciation, longer default horizon |
+| Alameda | $1.25M | 20% down, older housing stock (higher maintenance), $3,600 rent |
+| Livermore | $1.15M | 20% down, Mello-Roos (1.35% tax), $3,800 rent |
 
-Defaults are deliberately conservative: investment return is 0%, "invest the difference"
-and tax benefits are off, and refinance is off — so the first view isn't overwhelming.
-Turn features on as you need them.
+All presets use a 5.8% mortgage rate, matching the default. Defaults are otherwise
+deliberately conservative: investment return is 0%, "invest the difference" and tax
+benefits are off, and refinance is off — so the first view isn't overwhelming. Turn
+features on as you need them.
 
 ## Running it
 
 It's a single self-contained HTML file. Just open `index.html` in a browser — no build
 step, no install. The only external dependency is Chart.js from a CDN.
 
+Every slider value is also click-to-edit — click the number to type an exact figure
+(`1.4m`, `375k`, `5.8%`, `$2,800` all work). Light and dark themes follow your OS setting.
+
 State persists to `localStorage`, and the current configuration encodes into the URL hash
 so you can share a specific scenario by copying the link.
 
-## Deploying to GitHub Pages
+## Deploying
 
-Settings → Pages → Source: `main` branch, root. It'll publish at the live URL above.
+Served from GitHub Pages off the `main` branch (root) at the live URL above — pushing to
+`main` redeploys automatically. To change the source: Settings → Pages.
 
 ## Caveats
 
