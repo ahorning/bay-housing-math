@@ -12,6 +12,8 @@
     --bg:           #ffffff;
     --bg-secondary: #f5f5f4;
     --bg-tertiary:  #eeede9;
+    --surface:      #ffffff;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --text:         #1a1a1a;
     --text-2:       #666660;
     --text-3:       #999994;
@@ -38,6 +40,8 @@
       --bg:           #1c1c1e;
       --bg-secondary: #2c2c2e;
       --bg-tertiary:  #3a3a3c;
+      --surface:      #262629;
+      --shadow:       0 1px 3px rgba(0,0,0,0.3);
       --text:         #f2f2f7;
       --text-2:       #aeaeb2;
       --text-3:       #6c6c70;
@@ -139,10 +143,11 @@
 
   /* ── Input panel ── */
   .inp-panel {
-    background: var(--bg);
+    background: var(--surface);
     border: 0.5px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1rem 1.125rem;
+    box-shadow: var(--shadow);
   }
   .srow { margin-bottom: 13px; }
   .slbl {
@@ -151,6 +156,14 @@
   }
   .slbl-text { font-size: 12px; color: var(--text-2); }
   .sval { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+  .sval-editable { cursor: text; border-bottom: 1px dashed transparent; transition: color .12s, border-color .12s; }
+  .sval-editable:hover { color: var(--buy); border-bottom-color: var(--border-2); }
+  .sval-edit {
+    font-family: var(--font-mono); font-size: inherit; font-weight: inherit;
+    width: 7em; max-width: 100%; padding: 1px 5px; text-align: right;
+    border: 1px solid var(--buy); border-radius: 5px;
+    background: var(--bg-secondary); color: var(--text); outline: none;
+  }
   .snote { font-size: 11px; color: var(--text-3); margin-top: 2px; }
   .snote.warn { color: var(--gone); }
 
@@ -210,26 +223,28 @@
   .out-panel { display: flex; flex-direction: column; gap: 14px; }
 
   .verdict {
-    border-radius: var(--radius-lg); padding: 13px 18px;
+    border-radius: var(--radius-lg); padding: 18px 22px;
     display: flex; justify-content: space-between;
-    align-items: center; flex-wrap: wrap; gap: 10px;
+    align-items: center; flex-wrap: wrap; gap: 12px;
     border: 0.5px solid;
   }
   .verdict.bw { background: var(--success-bg); border-color: var(--success-bdr); }
   .verdict.rw { background: var(--info-bg);    border-color: var(--info-bdr); }
-  .v-at   { font-size: 12px; color: var(--text-2); margin-bottom: 2px; }
-  .v-txt  { font-size: 17px; font-weight: 500; }
+  .v-at   { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-2); margin-bottom: 4px; }
+  .v-txt  { font-size: 28px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em; }
   .verdict.bw .v-txt { color: var(--success-text); }
   .verdict.rw .v-txt { color: var(--info-text); }
+  .v-why  { font-size: 13px; color: var(--text-2); margin-top: 6px; max-width: 48ch; }
   .v-right { text-align: right; }
-  .v-bklbl { font-size: 11px; color: var(--text-2); }
-  .v-bkval { font-size: 20px; font-family: var(--font-mono); font-weight: 500; }
+  .v-bklbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-2); margin-bottom: 1px; }
+  .v-bkval { font-size: 16px; font-family: var(--font-mono); font-weight: 500; color: var(--text-2); }
 
   .card {
-    background: var(--bg);
+    background: var(--surface);
     border: 0.5px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1rem 1.25rem;
+    box-shadow: var(--shadow);
   }
   .card-hdr {
     display: flex; align-items: center; justify-content: space-between;
@@ -336,6 +351,8 @@
       <button class="preset-btn" onclick="loadPreset(0)">East Bay starter</button>
       <button class="preset-btn" onclick="loadPreset(1)">Berkeley / hills</button>
       <button class="preset-btn" onclick="loadPreset(2)">Rockridge / Piedmont</button>
+      <button class="preset-btn" onclick="loadPreset(3)">Alameda</button>
+      <button class="preset-btn" onclick="loadPreset(4)">Livermore</button>
     </div>
   </div>
 
@@ -541,10 +558,11 @@
     <div class="out-panel">
 
       <!-- Verdict banner -->
-      <div class="verdict" id="verdict">
+      <div class="verdict" id="verdict" aria-live="polite">
         <div>
           <div class="v-at"  id="v-at"></div>
           <div class="v-txt" id="v-txt"></div>
+          <div class="v-why" id="v-why"></div>
         </div>
         <div class="v-right">
           <div class="v-bklbl">Breakeven</div>
@@ -571,7 +589,7 @@
           <div class="leg-item"><div class="leg-sw" style="border-top:2px dashed var(--rent);height:0;margin-top:1px;"></div>Cumulative rent</div>
           <div class="leg-item" id="leg-bk" style="display:none;"><div class="leg-sw" style="border-top:2px dashed var(--amber);height:0;margin-top:1px;"></div>Breakeven</div>
           <div class="leg-item" id="leg-refi" style="display:none;"><div class="leg-sw" style="border-top:2px dashed #1D9E75;height:0;margin-top:1px;"></div>Refi</div>
-          <div class="leg-item" id="leg-invest" style="display:none;"><div class="leg-sw" style="border-top:2px dashed #1D9E75;height:0;margin-top:1px;"></div>Rent + invest</div>
+          <div class="leg-item" id="leg-invest" style="display:none;"><div class="leg-sw" style="border-top:2px dashed #1D9E75;height:0;margin-top:1px;"></div><span id="leg-invest-txt">Rent + invest</span></div>
         </div>
       </div>
 
@@ -662,7 +680,7 @@ const DEFAULT = {
 
 const PRESETS = [
   { label: 'East Bay starter', values: {
-    homePrice:1000000, downPaymentPct:10, mortgageRate:6.8, loanTerm:30,
+    homePrice:1000000, downPaymentPct:10, mortgageRate:5.8, loanTerm:30,
     propertyTaxRate:1.25, hoa:0, insurance:250, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.5, pmiRate:0.8,
     rent:3800, rentIncrease:4, renterInsurance:25,
@@ -671,7 +689,7 @@ const PRESETS = [
     taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Berkeley / hills', values: {
-    homePrice:1500000, downPaymentPct:20, mortgageRate:6.8, loanTerm:30,
+    homePrice:1500000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
     propertyTaxRate:1.3, hoa:0, insurance:400, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:5000, rentIncrease:4, renterInsurance:30,
@@ -680,13 +698,31 @@ const PRESETS = [
     taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Rockridge / Piedmont', values: {
-    homePrice:1800000, downPaymentPct:20, mortgageRate:6.8, loanTerm:30,
+    homePrice:1800000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
     propertyTaxRate:1.3, hoa:0, insurance:350, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:6500, rentIncrease:4, renterInsurance:30,
     appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5,
     taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:20, investCgTax:true,
+  }},
+  { label: 'Alameda', values: {
+    homePrice:1250000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    propertyTaxRate:1.2, hoa:0, insurance:320, maintenanceRate:1.2,
+    buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
+    rent:3600, rentIncrease:4, renterInsurance:25,
+    appreciationRate:4.0, yearsToStay:8, prop13:true, investmentReturn:0, investDiff:false,
+    refi:false, refiYear:5, refiRate:5.5,
+    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
+  }},
+  { label: 'Livermore', values: {
+    homePrice:1150000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    propertyTaxRate:1.35, hoa:0, insurance:300, maintenanceRate:1.0,
+    buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
+    rent:3800, rentIncrease:4, renterInsurance:25,
+    appreciationRate:4.0, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
+    refi:false, refiYear:5, refiRate:5.5,
+    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
 ];
 
@@ -942,7 +978,7 @@ const vertLinePlugin = {
 };
 Chart.register(vertLinePlugin);
 
-function renderChart(data, yts, bky, rentInvestKey) {
+function renderChart(data, yts, bky, rentInvestKey, investLabel) {
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const gc = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
   const tc = dark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.45)';
@@ -971,7 +1007,7 @@ function renderChart(data, yts, bky, rentInvestKey) {
           borderDash: [6, 3],
         },
         ...(rentInvestKey ? [{
-          label: 'Rent + invest',
+          label: investLabel || 'Rent + invest',
           data: data.map(d => ({ x: d.year, y: d[rentInvestKey] })),
           borderColor: '#1D9E75', backgroundColor: 'transparent',
           borderWidth: 2, fill: false, pointRadius: 0, tension: 0.3,
@@ -981,6 +1017,7 @@ function renderChart(data, yts, bky, rentInvestKey) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 16 } },   // headroom for the breakeven/refi labels
       interaction: { intersect: false, mode: 'index' },
       plugins: {
         legend: { display: false },
@@ -1051,6 +1088,9 @@ function updateUI(redrawChart = true) {
   const showInvest    = (state.investmentReturn || 0) > 0;
   const useAfterTax   = showInvest && state.taxBenefits && state.investCgTax;
   const rentInvestKey = showInvest ? (useAfterTax ? 'rentNetCostAfterTax' : 'rentNetCost') : null;
+  // Label reflects WHAT the renter invests: just the down payment, or the
+  // monthly difference too when "Invest the difference" is on.
+  const investLabel   = state.investDiff ? 'Rent + invest the difference' : 'Rent + invest down payment';
   const rentCompareKey = rentInvestKey || 'cumRent';
   const rentCompare   = d[rentCompareKey];
   const bky           = findCrossover(data, rentCompareKey);
@@ -1076,13 +1116,27 @@ function updateUI(redrawChart = true) {
     bkEl.textContent   = 'None in 30 yr';
     bkEl.style.fontSize = '14px';
   }
+
+  // Plain-English "why" — explains the verdict in terms of the time horizon
+  let why;
+  if (bky) {
+    why = buyAhead
+      ? `Buying breaks even at year ${bky}, and you plan to stay ${state.yearsToStay} — past that point, owning comes out ahead.`
+      : `Renting is cheaper for now; buying doesn't catch up until year ${bky}, after you'd have moved.`;
+  } else {
+    why = buyAhead
+      ? `Buying is ahead from the start and stays ahead across the full 30 years.`
+      : `Renting stays cheaper the whole way — buying never breaks even within 30 years at these assumptions.`;
+  }
+  document.getElementById('v-why').textContent = why;
   document.getElementById('leg-bk').style.display     = bky        ? 'flex' : 'none';
   document.getElementById('leg-invest').style.display = showInvest ? 'flex' : 'none';
+  document.getElementById('leg-invest-txt').textContent = investLabel;
   document.getElementById('leg-refi').style.display   = state.refi ? 'flex' : 'none';
 
   // Chart
   if (redrawChart) {
-    renderChart(data, state.yearsToStay, bky, rentInvestKey);
+    renderChart(data, state.yearsToStay, bky, rentInvestKey, investLabel);
   } else {
     updateVertLines(state.yearsToStay, bky);
   }
@@ -1195,6 +1249,63 @@ function applyStateToSliders() {
     const el = document.getElementById('v-' + k);
     if (state[k] !== undefined) inp.value = state[k];
     if (el) el.textContent = fv(k, state[k]);
+  });
+}
+
+// ─────────────────────────────────────────────
+// Click-to-edit: type an exact value into any slider's readout
+// ─────────────────────────────────────────────
+function parseNumeric(raw) {
+  let s = String(raw).trim().toLowerCase().replace(/[$,%\s]/g, '');
+  let mult = 1;
+  if (s.endsWith('m'))      { mult = 1e6; s = s.slice(0, -1); }
+  else if (s.endsWith('k')) { mult = 1e3; s = s.slice(0, -1); }
+  const v = parseFloat(s);
+  return isNaN(v) ? NaN : v * mult;
+}
+
+function editValue(key, slider, label) {
+  if (label.querySelector('input')) return; // already editing
+  const min = parseFloat(slider.min), max = parseFloat(slider.max), step = parseFloat(slider.step);
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'sval-edit';
+  inp.value = String(state[key]);
+  inp.setAttribute('inputmode', 'decimal');
+  label.textContent = '';
+  label.appendChild(inp);
+  inp.focus();
+  inp.select();
+
+  const finish = (save) => {
+    if (save) {
+      let v = parseNumeric(inp.value);
+      if (!isNaN(v)) {
+        v = Math.min(max, Math.max(min, v));
+        if (step) v = Math.round(v / step) * step;
+        v = Math.round(v * 1000) / 1000;
+        state[key] = v;
+      }
+    }
+    applyStateToSliders();   // restore/refresh all readouts + slider positions
+    if (save) updateUI();
+  };
+
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+
+function makeEditable() {
+  document.querySelectorAll('input[type=range][data-key]').forEach(slider => {
+    const key   = slider.dataset.key;
+    const label = document.getElementById('v-' + key);
+    if (!label) return;
+    label.classList.add('sval-editable');
+    label.title = 'Click to type an exact value';
+    label.addEventListener('click', () => editValue(key, slider, label));
   });
 }
 
@@ -1323,6 +1434,7 @@ function collapseInputsOnMobile() {
 // ─────────────────────────────────────────────
 loadFromURL();
 bindSliders();
+makeEditable();
 loadSaved();
 collapseInputsOnMobile();
 updateUI();
