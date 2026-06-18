@@ -57,6 +57,8 @@
     color: var(--text);
     font-size: 15px;
     line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
   }
   input[type=range] {
     width: 100%;
@@ -64,6 +66,7 @@
     cursor: pointer;
     height: 4px;
   }
+  input[type=range].slider-lg { height: 8px; }
   input[type=text] {
     background: var(--bg-secondary);
     border: 0.5px solid var(--border-2);
@@ -285,9 +288,38 @@
   .mt-note strong { color: var(--text); font-weight: 500; }
 
   @media (max-width: 700px) {
-    .layout { grid-template-columns: 1fr; }
+    .page { padding: 16px 14px 56px; }
+    .layout { grid-template-columns: 1fr; gap: 16px; }
     .bk-grid { grid-template-columns: 1fr; }
-    .presets { display: none; }
+
+    /* Results first on a phone, detailed inputs below */
+    .out-panel { order: -1; }
+
+    /* Header: title on top, presets become a horizontal scroll strip */
+    .hdr { gap: 10px; }
+    .presets {
+      width: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .presets::-webkit-scrollbar { display: none; }
+    .preset-btn { flex: 0 0 auto; white-space: nowrap; }
+
+    /* Verdict stacks cleanly instead of squeezing side-by-side */
+    .verdict { flex-direction: column; align-items: flex-start; }
+    .v-right { text-align: left; }
+
+    /* >=16px prevents iOS Safari from zooming in on focus */
+    input[type=text] { font-size: 16px; }
+  }
+
+  /* Roomier slider hit areas on touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    input[type=range] { height: 16px; }
+    input[type=range].slider-lg { height: 20px; }
   }
 </style>
 </head>
@@ -320,7 +352,7 @@
             <span class="slbl-text" style="font-size:14px;font-weight:500;color:var(--text);">Home price</span>
             <span class="sval" id="v-homePrice" style="font-size:20px;"></span>
           </div>
-          <input type="range" data-key="homePrice" min="100000" max="4000000" step="10000" style="height:8px;">
+          <input type="range" class="slider-lg" data-key="homePrice" min="100000" max="4000000" step="10000">
         </div>
 
         <div class="srow">
@@ -404,7 +436,7 @@
             <span class="slbl-text" style="font-size:14px;font-weight:500;color:var(--text);">Monthly rent</span>
             <span class="sval" id="v-rent" style="font-size:20px;"></span>
           </div>
-          <input type="range" data-key="rent" min="400" max="10000" step="100" style="height:8px;">
+          <input type="range" class="slider-lg" data-key="rent" min="400" max="10000" step="100">
         </div>
 
         <div class="srow">
@@ -619,7 +651,7 @@
 // Data
 // ─────────────────────────────────────────────
 const DEFAULT = {
-  homePrice: 1000000, downPaymentPct: 10, mortgageRate: 6.8, loanTerm: 30,
+  homePrice: 1000000, downPaymentPct: 10, mortgageRate: 5.8, loanTerm: 30,
   propertyTaxRate: 1.25, hoa: 0, insurance: 250, maintenanceRate: 1.0,
   buyingClosingPct: 3, sellingClosingPct: 5.5, pmiRate: 0.8,
   rent: 2800, rentIncrease: 4, renterInsurance: 25,
@@ -1264,12 +1296,21 @@ function loadFromURL() {
   } catch { /* ignore */ }
 }
 
+// On a phone, collapse the input sections by default so results stay
+// near the top — the user expands the assumptions they care about.
+function collapseInputsOnMobile() {
+  if (window.matchMedia('(max-width: 700px)').matches) {
+    document.querySelectorAll('.inp-panel > details').forEach(d => d.removeAttribute('open'));
+  }
+}
+
 // ─────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────
 loadFromURL();
 bindSliders();
 loadSaved();
+collapseInputsOnMobile();
 updateUI();
 </script>
 </body>
