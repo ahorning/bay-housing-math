@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buy vs. Rent Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:           #ffffff;
+    --bg-secondary: #f5f5f4;
+    --bg-tertiary:  #eeede9;
+    --text:         #1a1a1a;
+    --text-2:       #666660;
+    --text-3:       #999994;
+    --border:       rgba(0,0,0,0.12);
+    --border-2:     rgba(0,0,0,0.22);
+    --radius-md:    8px;
+    --radius-lg:    12px;
+    --gone:         #E24B4A;
+    --rec:          #1D9E75;
+    --buy:          #7F77DD;
+    --rent:         #378ADD;
+    --amber:        #EF9F27;
+    --success-bg:   #eaf3de;
+    --success-text: #3B6D11;
+    --success-bdr:  rgba(59,109,17,0.3);
+    --info-bg:      #e6f1fb;
+    --info-text:    #185FA5;
+    --info-bdr:     rgba(24,95,165,0.3);
+    --font-sans:    system-ui, -apple-system, sans-serif;
+    --font-mono:    ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:           #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --bg-tertiary:  #3a3a3c;
+      --text:         #f2f2f7;
+      --text-2:       #aeaeb2;
+      --text-3:       #6c6c70;
+      --border:       rgba(255,255,255,0.12);
+      --border-2:     rgba(255,255,255,0.22);
+      --success-bg:   rgba(59,109,17,0.2);
+      --success-text: #a8d878;
+      --success-bdr:  rgba(120,200,60,0.3);
+      --info-bg:      rgba(24,95,165,0.2);
+      --info-text:    #85b7eb;
+      --info-bdr:     rgba(85,183,235,0.3);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--buy);
+    cursor: pointer;
+    height: 4px;
+  }
+  input[type=text] {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-2);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  input[type=text]:focus { border-color: var(--buy); }
+  button {
+    background: transparent;
+    border: 0.5px solid var(--border-2);
+    border-radius: var(--radius-md);
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 6px 12px;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--bg-secondary); color: var(--text); }
+  details { border-top: 0.5px solid var(--border); }
+  details:first-of-type { border-top: none; }
+  details summary {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    list-style: none;
+    padding: 10px 0 8px;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details[open] summary { margin-bottom: 12px; }
+  details[open] summary::after { content: '−'; }
+  details:not([open]) summary::after { content: '+'; }
+
+  /* ── Layout ── */
+  .page { max-width: 1120px; margin: 0 auto; padding: 24px 20px 60px; }
+  .hdr {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    margin-bottom: 1.5rem; padding-bottom: 1rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .hdr h1 { font-size: 22px; font-weight: 500; }
+  .hdr p  { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .preset-btn {
+    padding: 5px 12px; font-size: 12px;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-2); cursor: pointer;
+  }
+  .preset-btn:hover { background: var(--bg-tertiary); color: var(--text); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 296px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  /* ── Input panel ── */
+  .inp-panel {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.125rem;
+  }
+  .srow { margin-bottom: 13px; }
+  .slbl {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 3px;
+  }
+  .slbl-text { font-size: 12px; color: var(--text-2); }
+  .sval { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+  .snote { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .snote.warn { color: var(--gone); }
+
+  .hor-sec { border-top: 0.5px solid var(--border); padding-top: 12px; margin-top: 4px; }
+  .hor-sec .slbl-text { font-size: 13px; font-weight: 500; color: var(--text); }
+  .hor-sec .sval { font-size: 15px; }
+
+  /* Toggle / checkbox row */
+  .toggle-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; margin-bottom: 9px;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+  .toggle-row input[type=checkbox] {
+    width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px;
+    cursor: pointer; accent-color: var(--rent);
+  }
+  .toggle-main  { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; }
+  .toggle-sub   { font-size: 11px; color: var(--text-2); margin-top: 2px; line-height: 1.4; }
+
+  /* Deferred feature placeholder */
+  .def-item {
+    padding: 9px 12px; margin-bottom: 9px;
+    background: var(--bg-secondary);
+    border: 0.5px dashed var(--border-2);
+    border-radius: var(--radius-md);
+    font-size: 12px; color: var(--text-3);
+  }
+  .def-item strong {
+    display: block; font-size: 11px; font-weight: 500;
+    color: var(--text-2); margin-bottom: 2px;
+  }
+
+  /* Save / load */
+  .sav-sec { border-top: 0.5px solid var(--border); padding-top: 11px; margin-top: 11px; }
+  .sav-acts { display: flex; gap: 5px; margin-bottom: 9px; }
+  .sav-acts button { flex: 1; font-size: 11px; padding: 6px 4px; }
+  .sin-row { display: flex; gap: 6px; margin-bottom: 9px; }
+  .sin-row input { flex: 1; }
+  .sin-row button { flex-shrink: 0; }
+  .svd-list { display: flex; flex-direction: column; gap: 5px; }
+  .svd-item { display: flex; gap: 5px; align-items: center; }
+  .svd-item .load-btn {
+    flex: 1; text-align: left; font-size: 12px; padding: 5px 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .svd-item .del-btn {
+    padding: 5px 8px; font-size: 11px; flex-shrink: 0;
+    color: var(--gone); border-color: rgba(226,75,74,0.4) !important;
+  }
+  .svd-item .del-btn:hover { background: rgba(226,75,74,0.1) !important; }
+
+  /* ── Output panel ── */
+  .out-panel { display: flex; flex-direction: column; gap: 14px; }
+
+  .verdict {
+    border-radius: var(--radius-lg); padding: 13px 18px;
+    display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 10px;
+    border: 0.5px solid;
+  }
+  .verdict.bw { background: var(--success-bg); border-color: var(--success-bdr); }
+  .verdict.rw { background: var(--info-bg);    border-color: var(--info-bdr); }
+  .v-at   { font-size: 12px; color: var(--text-2); margin-bottom: 2px; }
+  .v-txt  { font-size: 17px; font-weight: 500; }
+  .verdict.bw .v-txt { color: var(--success-text); }
+  .verdict.rw .v-txt { color: var(--info-text); }
+  .v-right { text-align: right; }
+  .v-bklbl { font-size: 11px; color: var(--text-2); }
+  .v-bkval { font-size: 20px; font-family: var(--font-mono); font-weight: 500; }
+
+  .card {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+  }
+  .card-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .card-lbl {
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-2);
+  }
+  .prop13-badge {
+    display: inline-flex; align-items: center;
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: var(--radius-md);
+    background: var(--info-bg); color: var(--info-text);
+    border: 0.5px solid var(--info-bdr);
+  }
+  .chart-wrap { position: relative; width: 100%; height: 270px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .leg-sw { width: 16px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+  .bk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bk-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+  .bk-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bk-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+  .gone-c { color: var(--gone); }
+  .rec-c  { color: var(--rec); }
+  .neg-c  { color: var(--gone); }
+  .bk-row { display: flex; justify-content: space-between; margin-bottom: 7px; font-size: 12px; }
+  .bk-row .lbl { color: var(--text-2); }
+  .bk-row .val { font-family: var(--font-mono); font-size: 13px; }
+  .bk-tot {
+    border-top: 0.5px solid var(--border); margin-top: 8px; padding-top: 8px;
+    display: flex; justify-content: space-between;
+  }
+  .bk-tot .lbl { font-size: 12px; font-weight: 500; }
+  .bk-tot .val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+
+  .sm-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sm-tbl th {
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-2);
+    padding: 6px 0; border-bottom: 0.5px solid var(--border);
+  }
+  .buy-col  { color: var(--buy)  !important; }
+  .rent-col { color: var(--rent) !important; }
+  .sm-tbl td { padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .sm-tbl td.num { font-family: var(--font-mono); text-align: right; }
+  .sm-tbl tr.total-row td { font-weight: 500; border-bottom: none; }
+  .mt-note {
+    margin-top: 10px; padding: 8px 12px;
+    background: var(--bg-secondary); border-radius: var(--radius-md);
+    font-size: 12px; color: var(--text-2);
+    display: flex; flex-wrap: wrap; gap: 16px;
+  }
+  .mt-note strong { color: var(--text); font-weight: 500; }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .bk-grid { grid-template-columns: 1fr; }
+    .presets { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <h1>Buy vs. rent calculator</h1>
+      <p>True cost comparison over time</p>
+    </div>
+    <div class="presets">
+      <button class="preset-btn" onclick="loadPreset(0)">East Bay starter</button>
+      <button class="preset-btn" onclick="loadPreset(1)">Berkeley / hills</button>
+      <button class="preset-btn" onclick="loadPreset(2)">Rockridge / Piedmont</button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ── Left: inputs ── -->
+    <div class="inp-panel">
+
+      <details open>
+        <summary>Buying</summary>
+
+        <div class="srow">
+          <div class="slbl">
+            <span class="slbl-text" style="font-size:14px;font-weight:500;color:var(--text);">Home price</span>
+            <span class="sval" id="v-homePrice" style="font-size:20px;"></span>
+          </div>
+          <input type="range" data-key="homePrice" min="100000" max="4000000" step="10000" style="height:8px;">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Down payment</span><span class="sval" id="v-downPaymentPct"></span></div>
+          <input type="range" data-key="downPaymentPct" min="3" max="60" step="1">
+          <div class="snote" id="note-dp"></div>
+        </div>
+
+        <div class="srow" id="pmi-row">
+          <div class="slbl"><span class="slbl-text">Mortgage insurance (PMI) rate</span><span class="sval" id="v-pmiRate"></span></div>
+          <input type="range" data-key="pmiRate" min="0.3" max="2" step="0.1">
+          <div class="snote">Auto-drops at 20% equity</div>
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Mortgage rate</span><span class="sval" id="v-mortgageRate"></span></div>
+          <input type="range" data-key="mortgageRate" min="2" max="12" step="0.1">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Loan term</span><span class="sval" id="v-loanTerm"></span></div>
+          <input type="range" data-key="loanTerm" min="10" max="30" step="5">
+        </div>
+
+        <label class="toggle-row" for="chk-refi" style="margin-bottom:9px;">
+          <input type="checkbox" id="chk-refi" onchange="state.refi=this.checked; updateUI();">
+          <div>
+            <div class="toggle-main">Refinance</div>
+            <div class="toggle-sub">Model a one-time refinance at a future year and rate</div>
+          </div>
+        </label>
+        <div id="refi-inputs" style="display:none;">
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">Refinance year</span><span class="sval" id="v-refiYear"></span></div>
+            <input type="range" data-key="refiYear" min="1" max="29" step="1">
+          </div>
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">New rate after refi</span><span class="sval" id="v-refiRate"></span></div>
+            <input type="range" data-key="refiRate" min="2" max="12" step="0.125">
+          </div>
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Property tax rate</span><span class="sval" id="v-propertyTaxRate"></span></div>
+          <input type="range" data-key="propertyTaxRate" min="0.2" max="3" step="0.05">
+          <div class="snote" id="note-tax"></div>
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">HOA fees</span><span class="sval" id="v-hoa"></span></div>
+          <input type="range" data-key="hoa" min="0" max="2000" step="50">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Home insurance</span><span class="sval" id="v-insurance"></span></div>
+          <input type="range" data-key="insurance" min="50" max="800" step="10">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Maintenance &amp; repairs</span><span class="sval" id="v-maintenanceRate"></span></div>
+          <input type="range" data-key="maintenanceRate" min="0.2" max="3" step="0.1">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Buying closing costs</span><span class="sval" id="v-buyingClosingPct"></span></div>
+          <input type="range" data-key="buyingClosingPct" min="1" max="6" step="0.25">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Selling closing costs</span><span class="sval" id="v-sellingClosingPct"></span></div>
+          <input type="range" data-key="sellingClosingPct" min="3" max="10" step="0.25">
+          <div class="snote">Realtor commissions, title, etc.</div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Renting</summary>
+
+        <div class="srow">
+          <div class="slbl">
+            <span class="slbl-text" style="font-size:14px;font-weight:500;color:var(--text);">Monthly rent</span>
+            <span class="sval" id="v-rent" style="font-size:20px;"></span>
+          </div>
+          <input type="range" data-key="rent" min="400" max="10000" step="100" style="height:8px;">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Annual rent increase</span><span class="sval" id="v-rentIncrease"></span></div>
+          <input type="range" data-key="rentIncrease" min="0" max="10" step="0.5">
+        </div>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Renter's insurance</span><span class="sval" id="v-renterInsurance"></span></div>
+          <input type="range" data-key="renterInsurance" min="5" max="100" step="5">
+        </div>
+      </details>
+
+      <details open>
+        <summary>Market</summary>
+
+        <label class="toggle-row" for="chk-prop13">
+          <input type="checkbox" id="chk-prop13" onchange="state.prop13 = this.checked; updateUI();">
+          <div>
+            <div class="toggle-main">California Prop 13 tax model</div>
+            <div class="toggle-sub">Assessed value locked at purchase price, grows max 2% / yr — not tracking home appreciation</div>
+          </div>
+        </label>
+
+        <div class="srow">
+          <div class="slbl"><span class="slbl-text">Home appreciation</span><span class="sval" id="v-appreciationRate"></span></div>
+          <input type="range" data-key="appreciationRate" min="-2" max="10" step="0.5">
+        </div>
+
+      <details open>
+        <summary>Tax benefits</summary>
+
+        <label class="toggle-row" for="chk-tax">
+          <input type="checkbox" id="chk-tax" onchange="state.taxBenefits=this.checked; syncTaxInputs(); updateUI();">
+          <div>
+            <div class="toggle-main">Include tax benefits</div>
+            <div class="toggle-sub">Mortgage interest deduction, SALT, capital gains exclusion</div>
+          </div>
+        </label>
+
+        <div id="tax-inputs" style="display:none;">
+          <div class="srow">
+            <div class="slbl" style="margin-bottom:6px;"><span class="slbl-text">Filing status</span></div>
+            <div style="display:flex;gap:16px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text);">
+                <input type="radio" name="filingStatus" value="married" onchange="state.filingStatus=this.value;updateUI();"> Married
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text);">
+                <input type="radio" name="filingStatus" value="single" onchange="state.filingStatus=this.value;updateUI();"> Single
+              </label>
+            </div>
+          </div>
+
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">Federal marginal income tax rate</span><span class="sval" id="v-federalRate"></span></div>
+            <input type="range" data-key="federalRate" min="10" max="37" step="1">
+          </div>
+
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">State income tax rate</span><span class="sval" id="v-stateRate"></span></div>
+            <input type="range" data-key="stateRate" min="0" max="15" step="0.1">
+            <div class="snote">CA marginal rates: 9.3% (~$100K), 10.3%, 11.3%, 12.3%, 13.3% top</div>
+          </div>
+
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">Federal long-term cap gains rate</span><span class="sval" id="v-capGainsRate"></span></div>
+            <input type="range" data-key="capGainsRate" min="0" max="20" step="5">
+            <div class="snote">CA has no preferential rate — gains taxed as ordinary income at state level</div>
+          </div>
+
+          <label class="toggle-row" for="chk-investcg" style="margin-bottom:9px;">
+            <input type="checkbox" id="chk-investcg" onchange="state.investCgTax=this.checked; updateUI();">
+            <div>
+              <div class="toggle-main">Tax investment returns on liquidation</div>
+              <div class="toggle-sub">Applies cap gains tax to renter's investment portfolio when comparing — uses the rates above</div>
+            </div>
+          </label>
+
+          <div class="snote" style="padding:8px 10px;background:var(--bg-secondary);border-radius:var(--radius-md);line-height:1.6;margin-bottom:4px;">
+            Assumes itemizing. Federal interest deduction capped at interest on first $750K of loan. Federal SALT deduction capped at $10K ($5K single). Capital gains exclusion: $500K married / $250K single (primary residence, 2+ yr).
+          </div>
+        </div>
+      </details>
+      </details>
+
+      <!-- Save / load -->
+      <div class="sav-sec">
+        <div class="sav-acts">
+          <button onclick="toggleSave()">Save config</button>
+          <button id="btn-url" onclick="copyURL()">Copy link</button>
+          <button onclick="resetDef()">Reset</button>
+        </div>
+        <div id="sin-row" class="sin-row" style="display:none;">
+          <input type="text" id="sname" placeholder="Config name..." onkeydown="if(event.key==='Enter') doSave();">
+          <button onclick="doSave()">Save</button>
+        </div>
+        <div id="svd-list" class="svd-list"></div>
+      </div>
+    </div>
+
+    <!-- ── Right: outputs ── -->
+    <div class="out-panel">
+
+      <!-- Verdict banner -->
+      <div class="verdict" id="verdict">
+        <div>
+          <div class="v-at"  id="v-at"></div>
+          <div class="v-txt" id="v-txt"></div>
+        </div>
+        <div class="v-right">
+          <div class="v-bklbl">Breakeven</div>
+          <div class="v-bkval" id="v-bkval"></div>
+        </div>
+      </div>
+
+      <!-- Mortgage quick-stats -->
+      <div class="mt-note" id="mt-note"></div>
+
+      <!-- Chart -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-lbl">Net cost over time</div>
+          <div class="prop13-badge" id="prop13-badge" style="display:none;">Prop 13 on</div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="mainChart" role="img" aria-label="Line chart comparing net cost of buying vs renting over 30 years">
+            Comparison of buy vs rent costs over 30 years.
+          </canvas>
+        </div>
+        <div class="chart-legend">
+          <div class="leg-item"><div class="leg-sw" style="background:var(--buy);"></div>Net buy cost (if sold)</div>
+          <div class="leg-item"><div class="leg-sw" style="border-top:2px dashed var(--rent);height:0;margin-top:1px;"></div>Cumulative rent</div>
+          <div class="leg-item" id="leg-bk" style="display:none;"><div class="leg-sw" style="border-top:2px dashed var(--amber);height:0;margin-top:1px;"></div>Breakeven</div>
+          <div class="leg-item" id="leg-refi" style="display:none;"><div class="leg-sw" style="border-top:2px dashed #1D9E75;height:0;margin-top:1px;"></div>Refi</div>
+          <div class="leg-item" id="leg-invest" style="display:none;"><div class="leg-sw" style="border-top:2px dashed #1D9E75;height:0;margin-top:1px;"></div>Rent + invest</div>
+        </div>
+      </div>
+
+      <!-- Years to stay + investment return -->
+      <div class="card" style="padding: 0.75rem 1.25rem;">
+        <div class="slbl" style="margin-bottom:6px;">
+          <span class="slbl-text" style="font-size:13px;font-weight:500;color:var(--text);">Years planning to stay</span>
+          <span class="sval" id="v-yearsToStay" style="font-size:15px;"></span>
+        </div>
+        <input type="range" data-key="yearsToStay" min="1" max="30" step="1">
+        <div style="margin-top:14px;border-top:0.5px solid var(--border);padding-top:12px;">
+          <div class="slbl" style="margin-bottom:6px;">
+            <span class="slbl-text">Investment return rate</span>
+            <span class="sval" id="v-investmentReturn"></span>
+          </div>
+          <input type="range" data-key="investmentReturn" min="0" max="12" step="0.5">
+          <div class="snote">Assumed annual return if down payment were invested instead — set to 0 to ignore</div>
+        </div>
+        <div style="margin-top:12px;border-top:0.5px solid var(--border);padding-top:12px;">
+          <label class="toggle-row" for="chk-investdiff" style="margin-bottom:0;">
+            <input type="checkbox" id="chk-investdiff" onchange="state.investDiff=this.checked; updateUI();">
+            <div>
+              <div class="toggle-main">Invest the difference</div>
+              <div class="toggle-sub">Renter also invests monthly savings when buying would cost more. Off = down payment only.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Gone forever / Recoverable -->
+      <div class="bk-grid">
+        <div class="card">
+          <div class="bk-hdr">
+            <div class="bk-dot" style="background:var(--gone);"></div>
+            <span class="bk-title gone-c">Gone forever</span>
+          </div>
+          <div id="gone-rows"></div>
+          <div class="bk-tot">
+            <span class="lbl">Total gone</span>
+            <span class="val gone-c" id="gone-tot"></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="bk-hdr">
+            <div class="bk-dot" style="background:var(--rec);"></div>
+            <span class="bk-title rec-c">Recoverable at sale</span>
+          </div>
+          <div id="rec-rows"></div>
+          <div class="bk-tot">
+            <span class="lbl">Net sale proceeds</span>
+            <span class="val rec-c" id="rec-tot"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary table -->
+      <div class="card">
+        <div class="card-lbl" id="sm-lbl">Summary</div>
+        <table class="sm-tbl">
+          <thead>
+            <tr>
+              <th style="text-align:left; width:40%;">Metric</th>
+              <th class="buy-col"  style="text-align:right; width:30%;">Buying</th>
+              <th class="rent-col" style="text-align:right; width:30%;">Renting</th>
+            </tr>
+          </thead>
+          <tbody id="sm-body"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /out-panel -->
+  </div><!-- /layout -->
+</div><!-- /page -->
+
+<script>
+// ─────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────
+const DEFAULT = {
+  homePrice: 1000000, downPaymentPct: 10, mortgageRate: 6.8, loanTerm: 30,
+  propertyTaxRate: 1.25, hoa: 0, insurance: 250, maintenanceRate: 1.0,
+  buyingClosingPct: 3, sellingClosingPct: 5.5, pmiRate: 0.8,
+  rent: 2800, rentIncrease: 4, renterInsurance: 25,
+  appreciationRate: 4.0, yearsToStay: 7, prop13: true, investmentReturn: 0, investDiff: false,
+  refi: false, refiYear: 5, refiRate: 5.5,
+  taxBenefits: false, filingStatus: 'married', federalRate: 24, stateRate: 9.3, capGainsRate: 15, investCgTax: true,
+};
+
+const PRESETS = [
+  { label: 'East Bay starter', values: {
+    homePrice:1000000, downPaymentPct:10, mortgageRate:6.8, loanTerm:30,
+    propertyTaxRate:1.25, hoa:0, insurance:250, maintenanceRate:1.0,
+    buyingClosingPct:3, sellingClosingPct:5.5, pmiRate:0.8,
+    rent:3800, rentIncrease:4, renterInsurance:25,
+    appreciationRate:4.0, yearsToStay:7, prop13:true, investmentReturn:0, investDiff:false,
+    refi:false, refiYear:5, refiRate:5.5,
+    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
+  }},
+  { label: 'Berkeley / hills', values: {
+    homePrice:1500000, downPaymentPct:20, mortgageRate:6.8, loanTerm:30,
+    propertyTaxRate:1.3, hoa:0, insurance:400, maintenanceRate:1.0,
+    buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
+    rent:5000, rentIncrease:4, renterInsurance:30,
+    appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
+    refi:false, refiYear:5, refiRate:5.5,
+    taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:15, investCgTax:true,
+  }},
+  { label: 'Rockridge / Piedmont', values: {
+    homePrice:1800000, downPaymentPct:20, mortgageRate:6.8, loanTerm:30,
+    propertyTaxRate:1.3, hoa:0, insurance:350, maintenanceRate:1.0,
+    buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
+    rent:6500, rentIncrease:4, renterInsurance:30,
+    appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
+    refi:false, refiYear:5, refiRate:5.5,
+    taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:20, investCgTax:true,
+  }},
+];
+
+let state = { ...DEFAULT };
+let chart = null;
+let savedConfigs = [];
+let saveOpen = false;
+
+// ─────────────────────────────────────────────
+// Formatters
+// ─────────────────────────────────────────────
+function fd(n) {
+  const a = Math.abs(n), s = n < 0 ? '-' : '';
+  if (a >= 1e6) return s + '$' + (a / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return s + '$' + Math.round(a / 1000) + 'K';
+  return s + '$' + Math.round(a);
+}
+
+function ff(n) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+}
+
+function fv(key, val) {
+  switch (key) {
+    case 'homePrice':         return fd(val);
+    case 'downPaymentPct':    return val + '% (' + fd(state.homePrice * val / 100) + ')';
+    case 'mortgageRate':      return parseFloat(val).toFixed(1) + '%';
+    case 'loanTerm':          return val + ' yr';
+    case 'propertyTaxRate':   return parseFloat(val).toFixed(2) + '% / yr';
+    case 'hoa':               return val == 0 ? 'None' : fd(val) + '/mo';
+    case 'insurance':         return fd(val) + '/mo';
+    case 'maintenanceRate':   return parseFloat(val).toFixed(1) + '% / yr (' + fd(state.homePrice * val / 100) + '/yr)';
+    case 'buyingClosingPct':  return parseFloat(val).toFixed(2) + '%';
+    case 'sellingClosingPct': return parseFloat(val).toFixed(2) + '%';
+    case 'pmiRate':           return parseFloat(val).toFixed(1) + '% / yr';
+    case 'rent':              return '$' + (val / 1000).toFixed(1) + 'K/mo';
+    case 'rentIncrease':      return parseFloat(val).toFixed(1) + '% / yr';
+    case 'renterInsurance':   return fd(val) + '/mo';
+    case 'appreciationRate':  return parseFloat(val).toFixed(1) + '% / yr';
+    case 'investmentReturn':  return parseFloat(val).toFixed(1) + '% / yr';
+    case 'refiYear':          return 'Year ' + val;
+    case 'refiRate':          return parseFloat(val).toFixed(2) + '%';
+    case 'stateRate':         return parseFloat(val).toFixed(1) + '%';
+    case 'capGainsRate':      return parseFloat(val).toFixed(0) + '%';
+    case 'yearsToStay':       return val + (val == 1 ? ' year' : ' years');
+    default:                  return val;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Finance math
+// ─────────────────────────────────────────────
+function monthlyPayment(principal, annualRatePct, termYears) {
+  if (annualRatePct <= 0) return principal / (termYears * 12);
+  const r = annualRatePct / 100 / 12;
+  const n = termYears * 12;
+  return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+}
+
+function generateData(p) {
+  const { homePrice, downPaymentPct, mortgageRate, loanTerm,
+          propertyTaxRate, hoa, insurance, maintenanceRate,
+          buyingClosingPct, sellingClosingPct, pmiRate,
+          rent, rentIncrease, renterInsurance,
+          appreciationRate, prop13, investmentReturn,
+          taxBenefits, filingStatus, federalRate, stateRate, capGainsRate, investCgTax, investDiff,
+          refi, refiYear, refiRate } = p;
+
+  const dp   = homePrice * downPaymentPct / 100;
+  const loan = homePrice - dp;
+  const buyC = homePrice * buyingClosingPct / 100;
+  const pi   = monthlyPayment(loan, mortgageRate, loanTerm);
+  const r    = mortgageRate / 100 / 12;
+  const mRet = (investmentReturn || 0) / 100 / 12;
+
+  let bal       = loan;
+  let cI = 0, cT = 0, cH = 0, cIns = 0, cM = 0, cP = 0, cTaxSavings = 0;
+  let cSpent    = dp + buyC;
+  let cRent     = 0;
+  let portfolio = dp + buyC; // renter invests down payment + closing costs on day one
+  let costBasis = dp + buyC; // tracks total contributions for investment cap gains calc
+
+  // Tax benefit constants (computed once)
+  const loanCapFraction  = loan > 0 ? Math.min(1, 750000 / loan) : 1;
+  const saltCap          = filingStatus === 'married' ? 10000 : 5000;
+  const stdDedFed        = filingStatus === 'married' ? 29200 : 14600;
+  const stdDedCA         = filingStatus === 'married' ? 10726 : 5363;
+  const cgExclusion      = filingStatus === 'married' ? 500000 : 250000;
+
+  let currentPi = pi;  // monthly payment — updated at refinance
+  let currentR  = r;   // monthly rate   — updated at refinance
+  let refiDone  = false;
+
+  const data = [];
+
+  for (let y = 1; y <= 30; y++) {
+    const hvS   = homePrice * Math.pow(1 + appreciationRate / 100, y - 1);
+    const hvE   = homePrice * Math.pow(1 + appreciationRate / 100, y);
+    const hvMid = (hvS + hvE) / 2;
+    const assessedMid = prop13 ? homePrice * Math.pow(1.02, y - 0.5) : hvMid;
+
+    // Monthly costs approximated at year midpoint
+    const mTax  = assessedMid * propertyTaxRate / 100 / 12;
+    const mHOA  = hoa;        // hoa is already a monthly value in state
+    const mIns  = insurance;  // insurance is monthly
+    const mMnt  = hvMid * maintenanceRate / 100 / 12;
+    const mRent = rent * Math.pow(1 + rentIncrease / 100, y - 1) + renterInsurance;
+
+    // Refinance: recalculate payment at the chosen year
+    if (refi && !refiDone && y === refiYear && bal > 1) {
+      const remainingMonths = (loanTerm - refiYear) * 12;
+      currentR = refiRate / 100 / 12;
+      currentPi = remainingMonths > 0
+        ? (currentR > 0
+            ? bal * currentR * Math.pow(1 + currentR, remainingMonths) / (Math.pow(1 + currentR, remainingMonths) - 1)
+            : bal / remainingMonths)
+        : 0;
+      refiDone = true;
+    }
+
+    let yI = 0, yPrin = 0, yPMI = 0;
+
+    for (let m = 0; m < 12; m++) {
+      let mMortgage = 0, mPMI = 0;
+
+      if (bal > 1) {
+        const ip  = bal * currentR;
+        const pp  = Math.min(currentPi - ip, bal);
+        bal       = Math.max(0, bal - pp);
+        yI       += ip;
+        yPrin    += pp;
+        mMortgage = ip + pp;
+
+        const hv = homePrice * Math.pow(1 + appreciationRate / 100, y - 1 + m / 12);
+        if (hv > 0 && (hv - bal) / hv < 0.20 && pmiRate > 0) {
+          mPMI  = bal * pmiRate / 100 / 12;
+          yPMI += mPMI;
+        }
+      }
+
+      // Renter invests the monthly savings when buying costs more (only if investDiff is on)
+      const buyMonthly = mMortgage + mPMI + mTax + mHOA + mIns + mMnt;
+      const saving     = investDiff ? Math.max(0, buyMonthly - mRent) : 0;
+      portfolio        = portfolio * (1 + mRet) + saving;
+      costBasis       += saving;
+    }
+
+    // Investment cap gains tax if liquidated at end of this year
+    const investGain        = Math.max(0, portfolio - costBasis);
+    const investCgTaxAmt    = (taxBenefits && investCgTax) ? investGain * ((capGainsRate / 100) + (stateRate / 100)) : 0;
+    const portfolioAfterTax = portfolio - investCgTaxAmt;
+
+    const yT   = mTax * 12;
+    const yH   = mHOA * 12;
+    const yIns = mIns * 12;
+    const yMnt = mMnt * 12;
+
+    cI += yI; cT += yT; cH += yH; cIns += yIns; cM += yMnt; cP += yPMI;
+
+    // Tax savings from deductions
+    let yTaxSavings = 0;
+    if (taxBenefits) {
+      // Federal: interest on first $750K + property tax up to SALT cap, minus standard deduction
+      const deductibleInterest = yI * loanCapFraction;
+      const fedItemized        = deductibleInterest + Math.min(yT, saltCap);
+      const fedSavings         = Math.max(0, fedItemized - stdDedFed) * (federalRate / 100);
+      // CA: full interest + full property tax, minus CA standard deduction
+      const caItemized         = deductibleInterest + yT;
+      const caSavings          = Math.max(0, caItemized - stdDedCA) * (stateRate / 100);
+      yTaxSavings = fedSavings + caSavings;
+    }
+    cTaxSavings += yTaxSavings;
+
+    cSpent += yI + yPrin + yT + yH + yIns + yMnt + yPMI - yTaxSavings;
+    cRent  += mRent * 12;
+
+    const sellC      = hvE * sellingClosingPct / 100;
+    // Capital gains tax at sale
+    const gain       = hvE - homePrice;
+    const taxableGain = taxBenefits ? Math.max(0, gain - cgExclusion) : 0;
+    const cgTax      = taxableGain * ((capGainsRate / 100) + (stateRate / 100));
+    const saleP      = Math.max(0, hvE - bal - sellC - cgTax);
+    const netBuy     = cSpent - saleP;
+    const goneAtSale = buyC + cI + cT + cH + cIns + cM + cP + sellC + cgTax - cTaxSavings;
+    const rentNetCost        = cRent - portfolio;
+    const rentNetCostAfterTax = cRent - portfolioAfterTax;
+
+    data.push({
+      year: y,
+      netBuyCost:          Math.round(netBuy),
+      cumRent:             Math.round(cRent),
+      rentNetCost:         Math.round(rentNetCost),
+      rentNetCostAfterTax: Math.round(rentNetCostAfterTax),
+      portfolio:           Math.round(portfolio),
+      portfolioAfterTax:   Math.round(portfolioAfterTax),
+      homeValue:     Math.round(hvE),
+      balance:       Math.round(bal),
+      saleProceeds:  Math.round(saleP),
+      sellCosts:     Math.round(sellC),
+      goneAtSale:    Math.round(goneAtSale),
+      cumTotalSpent: Math.round(cSpent),
+      cumInterest:   Math.round(cI),
+      cumTax:        Math.round(cT),
+      cumHOA:        Math.round(cH),
+      cumIns:        Math.round(cIns),
+      cumMaint:      Math.round(cM),
+      cumPMI:        Math.round(cP),
+      cumTaxSavings: Math.round(cTaxSavings),
+      cgTax:         Math.round(cgTax),
+      buyClosing:    Math.round(buyC),
+    });
+  }
+  return data;
+}
+
+function findCrossover(data, rentKey) {
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].netBuyCost <= data[i][rentKey]) return data[i].year;
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// Chart
+// ─────────────────────────────────────────────
+const vertLinePlugin = {
+  id: 'vertLines',
+  afterDatasetsDraw(c, _, opts) {
+    if (!opts || !opts.lines) return;
+    const { ctx, chartArea, scales } = c;
+    opts.lines.forEach(({ x, color, dash, label }) => {
+      if (!scales.x) return;
+      const xp = scales.x.getPixelForValue(x);
+      if (xp < chartArea.left || xp > chartArea.right) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = color || '#888';
+      ctx.lineWidth = 1.5;
+      if (dash) ctx.setLineDash(dash);
+      ctx.moveTo(xp, chartArea.top);
+      ctx.lineTo(xp, chartArea.bottom);
+      ctx.stroke();
+      if (label) {
+        ctx.setLineDash([]);
+        ctx.fillStyle = color || '#888';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, xp, chartArea.top - 5);
+      }
+      ctx.restore();
+    });
+  },
+};
+Chart.register(vertLinePlugin);
+
+function renderChart(data, yts, bky, rentInvestKey) {
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gc = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
+  const tc = dark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.45)';
+
+  const vlines = [{ x: yts, color: dark ? 'rgba(180,180,180,.4)' : 'rgba(80,80,80,.35)', dash: [3, 3] }];
+  if (bky) vlines.push({ x: bky, color: '#EF9F27', dash: [5, 3], label: 'breakeven' });
+  if (state.refi) vlines.push({ x: state.refiYear, color: '#1D9E75', dash: [4, 3], label: 'refi' });
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Net buy cost',
+          data: data.map(d => ({ x: d.year, y: d.netBuyCost })),
+          borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,.12)',
+          borderWidth: 2, fill: true, pointRadius: 0, tension: 0.3,
+        },
+        {
+          label: 'Cumulative rent',
+          data: data.map(d => ({ x: d.year, y: d.cumRent })),
+          borderColor: '#378ADD', backgroundColor: 'transparent',
+          borderWidth: 2, fill: false, pointRadius: 0, tension: 0.3,
+          borderDash: [6, 3],
+        },
+        ...(rentInvestKey ? [{
+          label: 'Rent + invest',
+          data: data.map(d => ({ x: d.year, y: d[rentInvestKey] })),
+          borderColor: '#1D9E75', backgroundColor: 'transparent',
+          borderWidth: 2, fill: false, pointRadius: 0, tension: 0.3,
+          borderDash: [3, 3],
+        }] : []),
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => 'Year ' + items[0].raw.x,
+            label: item  => item.dataset.label + ': ' + fd(item.raw.y),
+          },
+        },
+        vertLines: { lines: vlines },
+      },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 30,
+          title: { display: true, text: 'Year', color: tc, font: { size: 11 } },
+          ticks: { color: tc, font: { size: 11 }, stepSize: 5 },
+          grid: { color: gc }, border: { color: 'transparent' },
+        },
+        y: {
+          ticks: { color: tc, font: { size: 11 }, callback: v => fd(v) },
+          grid: { color: gc }, border: { color: 'transparent' },
+        },
+      },
+    },
+  });
+}
+
+function updateVertLines(yts, bky) {
+  if (!chart) return;
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const vlines = [{ x: yts, color: dark ? 'rgba(180,180,180,.4)' : 'rgba(80,80,80,.35)', dash: [3, 3] }];
+  if (bky) vlines.push({ x: bky, color: '#EF9F27', dash: [5, 3], label: 'breakeven' });
+  if (state.refi) vlines.push({ x: state.refiYear, color: '#1D9E75', dash: [4, 3], label: 'refi' });
+  chart.options.plugins.vertLines.lines = vlines;
+  chart.update('none');
+}
+
+// ─────────────────────────────────────────────
+// UI update
+// ─────────────────────────────────────────────
+function syncTaxInputs() {
+  document.getElementById('tax-inputs').style.display = state.taxBenefits ? 'block' : 'none';
+  document.querySelectorAll('input[name=filingStatus]').forEach(r => {
+    r.checked = r.value === state.filingStatus;
+  });
+  const cgChk = document.getElementById('chk-investcg');
+  if (cgChk) cgChk.checked = !!state.investCgTax;
+}
+
+
+function updateUI(redrawChart = true) {
+  const data = generateData(state);
+  const d    = data[Math.min(state.yearsToStay, 30) - 1];
+  const showInvest    = (state.investmentReturn || 0) > 0;
+  const useAfterTax   = showInvest && state.taxBenefits && state.investCgTax;
+  const rentInvestKey = showInvest ? (useAfterTax ? 'rentNetCostAfterTax' : 'rentNetCost') : null;
+  const rentCompareKey = rentInvestKey || 'cumRent';
+  const rentCompare   = d[rentCompareKey];
+  const bky           = findCrossover(data, rentCompareKey);
+  const buyAhead = d.netBuyCost < rentCompare;
+  const diff = Math.abs(d.netBuyCost - rentCompare);
+
+  // Prop 13 badge + tax note
+  document.getElementById('prop13-badge').style.display = state.prop13 ? 'inline-flex' : 'none';
+  document.getElementById('note-tax').textContent = state.prop13
+    ? 'Assessed value locked at purchase price, +2% / yr max (Prop 13)'
+    : 'Tracks home market value — disable Prop 13 for other states';
+
+  // Verdict
+  const vel = document.getElementById('verdict');
+  vel.className = 'verdict ' + (buyAhead ? 'bw' : 'rw');
+  document.getElementById('v-at').textContent  = 'At ' + state.yearsToStay + (state.yearsToStay == 1 ? ' year' : ' years');
+  document.getElementById('v-txt').textContent = (buyAhead ? 'Buying leads' : 'Renting leads') + ' by ' + fd(diff);
+  const bkEl = document.getElementById('v-bkval');
+  bkEl.style.fontSize = '';
+  if (bky) {
+    bkEl.textContent = 'Year ' + bky;
+  } else {
+    bkEl.textContent   = 'None in 30 yr';
+    bkEl.style.fontSize = '14px';
+  }
+  document.getElementById('leg-bk').style.display     = bky        ? 'flex' : 'none';
+  document.getElementById('leg-invest').style.display = showInvest ? 'flex' : 'none';
+  document.getElementById('leg-refi').style.display   = state.refi ? 'flex' : 'none';
+
+  // Chart
+  if (redrawChart) {
+    renderChart(data, state.yearsToStay, bky, rentInvestKey);
+  } else {
+    updateVertLines(state.yearsToStay, bky);
+  }
+
+  // Gone forever breakdown
+  const goneItems = [
+    { l: 'Mortgage interest',        v: d.cumInterest },
+    { l: 'Property taxes',           v: d.cumTax },
+    { l: 'HOA fees',                 v: d.cumHOA },
+    { l: 'Home insurance',           v: d.cumIns },
+    { l: 'Maintenance &amp; repairs',v: d.cumMaint },
+    { l: 'Mortgage insurance (PMI)', v: d.cumPMI },
+    { l: 'Buy + sell closing costs', v: d.buyClosing + d.sellCosts },
+  ].filter(r => r.v > 100);
+
+  // Tax savings shown as a green negative item
+  const taxSavingsHtml = (state.taxBenefits && d.cumTaxSavings > 0)
+    ? `<div class="bk-row"><span class="lbl">Tax deduction savings</span><span class="val rec-c">−${fd(d.cumTaxSavings)}</span></div>`
+    : '';
+
+  document.getElementById('gone-rows').innerHTML = goneItems
+    .map(r => `<div class="bk-row"><span class="lbl">${r.l}</span><span class="val gone-c">${fd(r.v)}</span></div>`)
+    .join('') + taxSavingsHtml;
+  document.getElementById('gone-tot').textContent = fd(d.goneAtSale);
+
+  // Recoverable breakdown
+  const recItems = [
+    { l: 'Home value',         v: d.homeValue,                   neg: false },
+    { l: 'Appreciation gain',  v: d.homeValue - state.homePrice, neg: false },
+    { l: 'Less: loan balance', v: d.balance,                     neg: true },
+    { l: 'Less: selling costs',v: d.sellCosts,                   neg: true },
+    ...(state.taxBenefits && d.cgTax > 0
+      ? [{ l: 'Less: capital gains tax', v: d.cgTax, neg: true }]
+      : []),
+  ];
+  document.getElementById('rec-rows').innerHTML = recItems
+    .map(r => `<div class="bk-row"><span class="lbl">${r.l}</span><span class="val ${r.neg ? 'neg-c' : 'rec-c'}">${r.neg ? '-' : ''}${fd(r.v)}</span></div>`)
+    .join('');
+  document.getElementById('rec-tot').textContent = fd(d.saleProceeds);
+
+  // Summary table
+  const mB = Math.round(d.netBuyCost  / (state.yearsToStay * 12));
+  const mR = Math.round(rentCompare   / (state.yearsToStay * 12));
+  document.getElementById('sm-lbl').textContent = 'Summary at year ' + state.yearsToStay;
+
+  const rows = [
+    { l: 'Total paid out',    b: d.cumTotalSpent, r: d.cumRent },
+    ...(showInvest ? [{ l: useAfterTax ? 'Portfolio (after cap gains tax)' : 'Investment portfolio', b: 0, r: useAfterTax ? d.portfolioAfterTax : d.portfolio, hideB: true }] : []),
+    { l: 'Recovered at sale', b: d.saleProceeds,  r: 0 },
+    { l: 'Net true cost',     b: d.netBuyCost,    r: rentCompare, bold: true },
+    { l: 'Monthly equivalent',b: mB,              r: mR },
+  ];
+  document.getElementById('sm-body').innerHTML = rows.map(row => {
+    const bc = row.bold ? (buyAhead  ? '#1D9E75' : '#E24B4A') : 'inherit';
+    const rc = row.bold ? (!buyAhead ? '#1D9E75' : '#E24B4A') : 'inherit';
+    const bVal = row.hideB ? '—' : fd(row.b);
+    const rVal = fd(row.r);
+    return `<tr class="${row.bold ? 'total-row' : ''}">
+      <td>${row.l}</td>
+      <td class="num" style="color:${bc};">${bVal}</td>
+      <td class="num" style="color:${rc};">${rVal}</td>
+    </tr>`;
+  }).join('');
+
+  const mp = monthlyPayment(state.homePrice * (1 - state.downPaymentPct / 100), state.mortgageRate, state.loanTerm);
+  let mtHtml = `<span>Monthly mortgage: <strong>${ff(mp)}/mo</strong></span>` +
+               `<span>Down payment: <strong>${ff(state.homePrice * state.downPaymentPct / 100)}</strong></span>`;
+  if (state.refi) {
+    const loanAmt  = state.homePrice * (1 - state.downPaymentPct / 100);
+    const piOrig   = mp;
+    // Approximate balance at refi year using the original payment stream
+    let bal = loanAmt, r = state.mortgageRate / 100 / 12;
+    for (let m = 0; m < state.refiYear * 12; m++) {
+      if (bal > 1) { const ip = bal * r; bal = Math.max(0, bal - Math.min(piOrig - ip, bal)); }
+    }
+    const remainingMonths = (state.loanTerm - state.refiYear) * 12;
+    const newR = state.refiRate / 100 / 12;
+    const mpRefi = remainingMonths > 0 && newR > 0
+      ? bal * newR * Math.pow(1 + newR, remainingMonths) / (Math.pow(1 + newR, remainingMonths) - 1)
+      : (remainingMonths > 0 ? bal / remainingMonths : 0);
+    mtHtml += `<span>After refi (yr ${state.refiYear}): <strong>${ff(mpRefi)}/mo</strong></span>`;
+  }
+  document.getElementById('mt-note').innerHTML = mtHtml;
+
+  // PMI row visibility
+  document.getElementById('pmi-row').style.display = state.downPaymentPct < 20 ? 'block' : 'none';
+
+  // Down payment note
+  const dpn = document.getElementById('note-dp');
+  dpn.textContent  = state.downPaymentPct < 20
+    ? 'Below 20% — mortgage insurance (PMI) applies'
+    : 'At or above 20% — no mortgage insurance';
+  dpn.className = 'snote' + (state.downPaymentPct < 20 ? ' warn' : '');
+
+  // Keep Prop 13 checkbox in sync when loading presets
+  document.getElementById('chk-prop13').checked    = !!state.prop13;
+  document.getElementById('chk-tax').checked        = !!state.taxBenefits;
+  document.getElementById('chk-investdiff').checked = !!state.investDiff;
+  document.getElementById('chk-refi').checked       = !!state.refi;
+  document.getElementById('refi-inputs').style.display = state.refi ? 'block' : 'none';
+  syncTaxInputs();
+}
+
+// ─────────────────────────────────────────────
+// Slider binding
+// ─────────────────────────────────────────────
+function applyStateToSliders() {
+  document.querySelectorAll('input[type=range][data-key]').forEach(inp => {
+    const k  = inp.dataset.key;
+    const el = document.getElementById('v-' + k);
+    if (state[k] !== undefined) inp.value = state[k];
+    if (el) el.textContent = fv(k, state[k]);
+  });
+}
+
+function bindSliders() {
+  document.querySelectorAll('input[type=range][data-key]').forEach(inp => {
+    const k  = inp.dataset.key;
+    const el = document.getElementById('v-' + k);
+    inp.value = state[k];
+    if (el) el.textContent = fv(k, state[k]);
+
+    inp.addEventListener('input', () => {
+      state[k] = Number(inp.value);
+      if (el) el.textContent = fv(k, state[k]);
+      // Down payment display depends on home price, keep it live
+      if (k === 'homePrice') {
+        const dpEl = document.getElementById('v-downPaymentPct');
+        if (dpEl) dpEl.textContent = fv('downPaymentPct', state.downPaymentPct);
+      }
+      updateUI(k !== 'yearsToStay');
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// Presets & reset
+// ─────────────────────────────────────────────
+function loadPreset(i) {
+  state = { ...PRESETS[i].values };
+  applyStateToSliders();
+  updateUI();
+}
+
+function resetDef() {
+  state = { ...DEFAULT };
+  applyStateToSliders();
+  updateUI();
+}
+
+// ─────────────────────────────────────────────
+// Save / load (localStorage)
+// ─────────────────────────────────────────────
+function loadSaved() {
+  try { savedConfigs = JSON.parse(localStorage.getItem('bvr_v2') || '[]'); } catch { savedConfigs = []; }
+  renderSaved();
+}
+
+function renderSaved() {
+  document.getElementById('svd-list').innerHTML = savedConfigs
+    .map((c, i) => `
+      <div class="svd-item">
+        <button class="load-btn" onclick="loadCfg(${i})">${c.name}</button>
+        <button class="del-btn"  onclick="delCfg(${i})">x</button>
+      </div>`)
+    .join('');
+}
+
+function loadCfg(i) {
+  state = { ...savedConfigs[i].values };
+  applyStateToSliders();
+  updateUI();
+}
+
+function delCfg(i) {
+  savedConfigs.splice(i, 1);
+  localStorage.setItem('bvr_v2', JSON.stringify(savedConfigs));
+  renderSaved();
+}
+
+function toggleSave() {
+  saveOpen = !saveOpen;
+  document.getElementById('sin-row').style.display = saveOpen ? 'flex' : 'none';
+  if (saveOpen) document.getElementById('sname').focus();
+}
+
+function doSave() {
+  const nm = document.getElementById('sname').value.trim();
+  if (!nm) return;
+  savedConfigs.push({ name: nm, values: { ...state } });
+  localStorage.setItem('bvr_v2', JSON.stringify(savedConfigs));
+  renderSaved();
+  document.getElementById('sname').value = '';
+  saveOpen = false;
+  document.getElementById('sin-row').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// URL share
+// ─────────────────────────────────────────────
+function copyURL() {
+  const p = new URLSearchParams();
+  Object.entries(state).forEach(([k, v]) => p.set(k, v));
+  const url = location.href.split('#')[0] + '#' + p.toString();
+  navigator.clipboard.writeText(url).then(() => {
+    const b = document.getElementById('btn-url');
+    b.textContent = 'Copied!';
+    setTimeout(() => b.textContent = 'Copy link', 2000);
+  });
+}
+
+function loadFromURL() {
+  try {
+    const h = location.hash.slice(1);
+    if (!h) return;
+    const p = new URLSearchParams(h);
+    p.forEach((v, k) => {
+      if (k === 'prop13') state[k] = v === 'true';
+      else if (k === 'taxBenefits') state[k] = v === 'true';
+      else if (k === 'investCgTax') state[k] = v === 'true';
+      else if (k === 'investDiff') state[k] = v === 'true';
+      else if (k === 'refi') state[k] = v === 'true';
+      else if (k === 'filingStatus') state[k] = v;
+      else if (Object.prototype.hasOwnProperty.call(DEFAULT, k)) state[k] = Number(v);    });
+  } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+loadFromURL();
+bindSliders();
+loadSaved();
+updateUI();
+</script>
+</body>
+</html>
