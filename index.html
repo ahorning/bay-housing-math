@@ -592,7 +592,7 @@
         </div>
         <div style="margin-top:12px;border-top:0.5px solid var(--border);padding-top:12px;">
           <label class="toggle-row" for="chk-investdiff" style="margin-bottom:0;">
-            <input type="checkbox" id="chk-investdiff" onchange="state.investDiff=this.checked; updateUI();">
+            <input type="checkbox" id="chk-investdiff" onchange="onInvestDiff(this.checked);">
             <div>
               <div class="toggle-main">Invest the difference</div>
               <div class="toggle-sub">Renter also invests monthly savings when buying would cost more. Off = down payment only.</div>
@@ -1021,6 +1021,20 @@ function updateVertLines(yts, bky) {
 // ─────────────────────────────────────────────
 // UI update
 // ─────────────────────────────────────────────
+// Turning on "invest the difference" with a 0% return would do nothing,
+// so seed a sensible default return the first time it's enabled.
+function onInvestDiff(checked) {
+  state.investDiff = checked;
+  if (checked && (state.investmentReturn || 0) === 0) {
+    state.investmentReturn = 2;
+    const inp = document.querySelector('input[type=range][data-key=investmentReturn]');
+    if (inp) inp.value = state.investmentReturn;
+    const el = document.getElementById('v-investmentReturn');
+    if (el) el.textContent = fv('investmentReturn', state.investmentReturn);
+  }
+  updateUI();
+}
+
 function syncTaxInputs() {
   document.getElementById('tax-inputs').style.display = state.taxBenefits ? 'block' : 'none';
   document.querySelectorAll('input[name=filingStatus]').forEach(r => {
