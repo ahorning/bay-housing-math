@@ -241,7 +241,7 @@
   .v-txt  { font-size: 28px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em; }
   .verdict.bw .v-txt { color: var(--success-text); }
   .verdict.rw .v-txt { color: var(--info-text); }
-  .v-why  { font-size: 13px; color: var(--text-2); margin-top: 6px; max-width: 48ch; }
+  .v-assume { font-size: 11px; color: var(--text-2); margin-top: 6px; line-height: 1.4; }
   .v-right { text-align: right; }
   .v-bklbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-2); margin-bottom: 1px; }
   .v-bkval { font-size: 16px; font-family: var(--font-mono); font-weight: 500; color: var(--text-2); }
@@ -309,6 +309,8 @@
   }
   .mt-note strong { color: var(--text); font-weight: 500; }
 
+  .mini-verdict { display: none; }
+
   @media (max-width: 700px) {
     .page { padding: 16px 14px 56px; }
     .layout { grid-template-columns: 1fr; gap: 16px; }
@@ -336,10 +338,41 @@
 
     /* >=16px prevents iOS Safari from zooming in on focus */
     input[type=text] { font-size: 16px; }
+
+    /* Touch-friendly sliders: custom track + big thumbs */
+    input[type=range], input[type=range].slider-lg {
+      -webkit-appearance: none; appearance: none;
+      height: 8px; background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--buy); border: none; cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--buy); border: none; cursor: pointer;
+    }
+    .srow { margin-bottom: 18px; }
+
+    /* Shorter chart so verdict + chart fit one screen */
+    .chart-wrap { height: 220px; }
+
+    /* Sticky mini-verdict bar (toggled by IntersectionObserver) */
+    .mini-verdict.show {
+      display: flex; position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100; justify-content: space-between; align-items: center;
+      gap: 10px; padding: 9px 16px;
+      font-size: 13px; font-weight: 500;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .mini-verdict.bw { background: var(--success-bg); color: var(--success-text); }
+    .mini-verdict.rw { background: var(--info-bg);    color: var(--info-text); }
   }
 
   /* Roomier slider hit areas on touch devices */
-  @media (hover: none) and (pointer: coarse) {
+  @media (hover: none) and (pointer: coarse) and (min-width: 701px) {
     input[type=range] { height: 16px; }
     input[type=range].slider-lg { height: 20px; }
   }
@@ -347,6 +380,12 @@
 </head>
 <body>
 <div class="page">
+
+  <!-- Mobile sticky mini-verdict (hidden on desktop) -->
+  <div class="mini-verdict" id="mini-verdict">
+    <span id="mini-txt"></span>
+    <span id="mini-bk"></span>
+  </div>
 
   <!-- Header -->
   <div class="hdr">
@@ -416,6 +455,11 @@
           <div class="srow">
             <div class="slbl"><span class="slbl-text">New rate after refi</span><span class="sval" id="v-refiRate"></span></div>
             <input type="range" data-key="refiRate" min="2" max="12" step="0.125">
+          </div>
+          <div class="srow">
+            <div class="slbl"><span class="slbl-text">Refi closing costs</span><span class="sval" id="v-refiCost"></span></div>
+            <input type="range" data-key="refiCost" min="0" max="20000" step="500">
+            <div class="snote">Typically $3–8K, or higher with points</div>
           </div>
         </div>
 
@@ -540,7 +584,7 @@
           </label>
 
           <div class="snote" style="padding:8px 10px;background:var(--bg-secondary);border-radius:var(--radius-md);line-height:1.6;margin-bottom:4px;">
-            Assumes itemizing. Federal interest deduction capped at interest on first $750K of loan. Federal SALT deduction capped at $10K ($5K single). Capital gains exclusion: $500K married / $250K single (primary residence, 2+ yr).
+            Assumes itemizing under 2026 tax law. Federal interest deduction capped at interest on first $750K of loan. SALT deduction capped at $40,400 (phases down above ~$505K income — not modeled). Capital gains exclusion: $500K married / $250K single (primary residence, 2+ yr).
           </div>
         </div>
       </details>
@@ -569,7 +613,7 @@
         <div>
           <div class="v-at"  id="v-at"></div>
           <div class="v-txt" id="v-txt"></div>
-          <div class="v-why" id="v-why"></div>
+          <div class="v-assume" id="v-assume"></div>
         </div>
         <div class="v-right">
           <div class="v-bklbl">Breakeven</div>
@@ -681,59 +725,59 @@
 // Data
 // ─────────────────────────────────────────────
 const DEFAULT = {
-  homePrice: 1000000, downPaymentPct: 10, mortgageRate: 5.8, loanTerm: 30,
+  homePrice: 1000000, downPaymentPct: 10, mortgageRate: 6.0, loanTerm: 30,
   propertyTaxRate: 1.25, hoa: 0, insurance: 250, maintenanceRate: 1.0,
   buyingClosingPct: 3, sellingClosingPct: 5.5, pmiRate: 0.8,
   rent: 2800, rentIncrease: 4, renterInsurance: 25,
   appreciationRate: 4.0, yearsToStay: 7, prop13: true, investmentReturn: 0, investDiff: false,
-  refi: false, refiYear: 5, refiRate: 5.5,
+  refi: false, refiYear: 5, refiRate: 5.5, refiCost: 5000,
   taxBenefits: false, filingStatus: 'married', federalRate: 24, stateRate: 9.3, capGainsRate: 15, investCgTax: true,
 };
 
 const PRESETS = [
   { label: 'East Bay starter', values: {
-    homePrice:1000000, downPaymentPct:10, mortgageRate:5.8, loanTerm:30,
+    homePrice:1000000, downPaymentPct:10, mortgageRate:6.0, loanTerm:30,
     propertyTaxRate:1.25, hoa:0, insurance:250, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.5, pmiRate:0.8,
     rent:3800, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:7, prop13:true, investmentReturn:0, investDiff:false,
-    refi:false, refiYear:5, refiRate:5.5,
+    refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
     taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Berkeley / hills', values: {
-    homePrice:1500000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    homePrice:1500000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
     propertyTaxRate:1.3, hoa:0, insurance:400, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:5000, rentIncrease:4, renterInsurance:30,
     appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
-    refi:false, refiYear:5, refiRate:5.5,
+    refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
     taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Rockridge / Piedmont', values: {
-    homePrice:1800000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    homePrice:1800000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
     propertyTaxRate:1.3, hoa:0, insurance:350, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:6500, rentIncrease:4, renterInsurance:30,
     appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
-    refi:false, refiYear:5, refiRate:5.5,
+    refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
     taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:20, investCgTax:true,
   }},
   { label: 'Alameda', values: {
-    homePrice:1250000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    homePrice:1250000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
     propertyTaxRate:1.2, hoa:0, insurance:320, maintenanceRate:1.2,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:3600, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:8, prop13:true, investmentReturn:0, investDiff:false,
-    refi:false, refiYear:5, refiRate:5.5,
+    refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
     taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Livermore', values: {
-    homePrice:1150000, downPaymentPct:20, mortgageRate:5.8, loanTerm:30,
+    homePrice:1150000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
     propertyTaxRate:1.35, hoa:0, insurance:300, maintenanceRate:1.0,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:3800, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
-    refi:false, refiYear:5, refiRate:5.5,
+    refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
     taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
 ];
@@ -777,6 +821,7 @@ function fv(key, val) {
     case 'investmentReturn':  return parseFloat(val).toFixed(1) + '% / yr';
     case 'refiYear':          return 'Year ' + val;
     case 'refiRate':          return parseFloat(val).toFixed(2) + '%';
+    case 'refiCost':          return fd(val);
     case 'stateRate':         return parseFloat(val).toFixed(1) + '%';
     case 'capGainsRate':      return parseFloat(val).toFixed(0) + '%';
     case 'yearsToStay':       return val + (val == 1 ? ' year' : ' years');
@@ -801,7 +846,7 @@ function generateData(p) {
           rent, rentIncrease, renterInsurance,
           appreciationRate, prop13, investmentReturn,
           taxBenefits, filingStatus, federalRate, stateRate, capGainsRate, investCgTax, investDiff,
-          refi, refiYear, refiRate } = p;
+          refi, refiYear, refiRate, refiCost } = p;
 
   const dp   = homePrice * downPaymentPct / 100;
   const loan = homePrice - dp;
@@ -817,16 +862,18 @@ function generateData(p) {
   let portfolio = dp + buyC; // renter invests down payment + closing costs on day one
   let costBasis = dp + buyC; // tracks total contributions for investment cap gains calc
 
-  // Tax benefit constants (computed once)
-  const loanCapFraction  = loan > 0 ? Math.min(1, 750000 / loan) : 1;
-  const saltCap          = filingStatus === 'married' ? 10000 : 5000;
-  const stdDedFed        = filingStatus === 'married' ? 29200 : 14600;
-  const stdDedCA         = filingStatus === 'married' ? 10726 : 5363;
+  // Tax benefit constants (2026 tax law: OBBBA raised SALT cap; single filers get the full cap)
+  const fedDebtCap       = 750000;  // federal: interest deductible on first $750K of acquisition debt
+  const caDebtCap        = 1000000; // California never adopted the $750K limit; still $1M
+  const saltCap          = 40400; // 2026: $40,400 for both single and MFJ; phases down above ~$505K MAGI (not modeled)
+  const stdDedFed        = filingStatus === 'married' ? 32200 : 16100;
+  const stdDedCA         = filingStatus === 'married' ? 11080 : 5540;
   const cgExclusion      = filingStatus === 'married' ? 500000 : 250000;
 
   let currentPi = pi;  // monthly payment — updated at refinance
   let currentR  = r;   // monthly rate   — updated at refinance
   let refiDone  = false;
+  let cRefiCost = 0;   // refinance closing costs paid
 
   const data = [];
 
@@ -853,15 +900,20 @@ function generateData(p) {
             : bal / remainingMonths)
         : 0;
       refiDone = true;
+      cRefiCost = refiCost || 0;
+      cSpent += cRefiCost;
     }
 
-    let yI = 0, yPrin = 0, yPMI = 0;
+    let yI = 0, yPrin = 0, yPMI = 0, yIdedFed = 0, yIdedCA = 0;
 
     for (let m = 0; m < 12; m++) {
       let mMortgage = 0, mPMI = 0;
 
       if (bal > 1) {
         const ip  = bal * currentR;
+        // Deductible share depends on the balance this month, not the original loan
+        yIdedFed += ip * Math.min(1, fedDebtCap / bal);
+        yIdedCA  += ip * Math.min(1, caDebtCap  / bal);
         const pp  = Math.min(currentPi - ip, bal);
         bal       = Math.max(0, bal - pp);
         yI       += ip;
@@ -897,12 +949,11 @@ function generateData(p) {
     // Tax savings from deductions
     let yTaxSavings = 0;
     if (taxBenefits) {
-      // Federal: interest on first $750K + property tax up to SALT cap, minus standard deduction
-      const deductibleInterest = yI * loanCapFraction;
-      const fedItemized        = deductibleInterest + Math.min(yT, saltCap);
+      // Federal: interest on first $750K of balance + property tax up to SALT cap, minus standard deduction
+      const fedItemized        = yIdedFed + Math.min(yT, saltCap);
       const fedSavings         = Math.max(0, fedItemized - stdDedFed) * (federalRate / 100);
-      // CA: full interest + full property tax, minus CA standard deduction
-      const caItemized         = deductibleInterest + yT;
+      // CA: interest on first $1M of balance + full property tax, minus CA standard deduction
+      const caItemized         = yIdedCA + yT;
       const caSavings          = Math.max(0, caItemized - stdDedCA) * (stateRate / 100);
       yTaxSavings = fedSavings + caSavings;
     }
@@ -913,14 +964,15 @@ function generateData(p) {
 
     const sellC      = hvE * sellingClosingPct / 100;
     // Capital gains tax at sale
-    const gain       = hvE - homePrice;
+    const gain       = hvE - sellC - homePrice; // selling costs reduce the amount realized
     const taxableGain = taxBenefits ? Math.max(0, gain - cgExclusion) : 0;
     const cgTax      = taxableGain * ((capGainsRate / 100) + (stateRate / 100));
     const saleP      = Math.max(0, hvE - bal - sellC - cgTax);
     const netBuy     = cSpent - saleP;
-    const goneAtSale = buyC + cI + cT + cH + cIns + cM + cP + sellC + cgTax - cTaxSavings;
-    const rentNetCost        = cRent - portfolio;
-    const rentNetCostAfterTax = cRent - portfolioAfterTax;
+    const goneAtSale = buyC + cI + cT + cH + cIns + cM + cP + sellC + cRefiCost - cTaxSavings;
+    // Renter's net cost = rent + money put into investments − what the portfolio is worth
+    const rentNetCost         = cRent + costBasis - portfolio;
+    const rentNetCostAfterTax = cRent + costBasis - portfolioAfterTax;
 
     data.push({
       year: y,
@@ -930,6 +982,7 @@ function generateData(p) {
       rentNetCostAfterTax: Math.round(rentNetCostAfterTax),
       portfolio:           Math.round(portfolio),
       portfolioAfterTax:   Math.round(portfolioAfterTax),
+      costBasis:           Math.round(costBasis),
       homeValue:     Math.round(hvE),
       balance:       Math.round(bal),
       saleProceeds:  Math.round(saleP),
@@ -944,9 +997,17 @@ function generateData(p) {
       cumPMI:        Math.round(cP),
       cumTaxSavings: Math.round(cTaxSavings),
       cgTax:         Math.round(cgTax),
+      cumRefiCost:   Math.round(cRefiCost),
       buyClosing:    Math.round(buyC),
     });
   }
+  // Year 0 (chart only): buy and immediately sell = both sets of closing costs; renter has spent nothing
+  data.year0 = {
+    netBuyCost:          Math.round(buyC + homePrice * sellingClosingPct / 100),
+    cumRent:             0,
+    rentNetCost:         0,
+    rentNetCostAfterTax: 0,
+  };
   return data;
 }
 
@@ -1007,20 +1068,20 @@ function renderChart(data, yts, bky, rentInvestKey, investLabel) {
       datasets: [
         {
           label: 'Net buy cost',
-          data: data.map(d => ({ x: d.year, y: d.netBuyCost })),
+          data: [{ x: 0, y: data.year0.netBuyCost }, ...data.map(d => ({ x: d.year, y: d.netBuyCost }))],
           borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,.12)',
           borderWidth: 2, fill: true, pointRadius: 0, tension: 0.3,
         },
         {
           label: 'Cumulative rent',
-          data: data.map(d => ({ x: d.year, y: d.cumRent })),
+          data: [{ x: 0, y: 0 }, ...data.map(d => ({ x: d.year, y: d.cumRent }))],
           borderColor: '#378ADD', backgroundColor: 'transparent',
           borderWidth: 2, fill: false, pointRadius: 0, tension: 0.3,
           borderDash: [6, 3],
         },
         ...(rentInvestKey ? [{
           label: investLabel || 'Rent + invest',
-          data: data.map(d => ({ x: d.year, y: d[rentInvestKey] })),
+          data: [{ x: 0, y: data.year0[rentInvestKey] }, ...data.map(d => ({ x: d.year, y: d[rentInvestKey] }))],
           borderColor: '#1D9E75', backgroundColor: 'transparent',
           borderWidth: 2, fill: false, pointRadius: 0, tension: 0.3,
           borderDash: [3, 3],
@@ -1094,7 +1155,18 @@ function syncTaxInputs() {
 }
 
 
+// Refi year can't be at or past the end of the loan term
+function syncRefiBounds() {
+  const inp = document.querySelector('input[data-key="refiYear"]');
+  const max = Math.max(1, state.loanTerm - 1);
+  inp.max = max;
+  if (state.refiYear > max) state.refiYear = max;
+  inp.value = state.refiYear;
+  document.getElementById('v-refiYear').textContent = fv('refiYear', state.refiYear);
+}
+
 function updateUI(redrawChart = true) {
+  syncRefiBounds();
   const data = generateData(state);
   const d    = data[Math.min(state.yearsToStay, 30) - 1];
   const showInvest    = (state.investmentReturn || 0) > 0;
@@ -1120,6 +1192,24 @@ function updateUI(redrawChart = true) {
   vel.className = 'verdict ' + (buyAhead ? 'bw' : 'rw');
   document.getElementById('v-at').textContent  = 'At ' + state.yearsToStay + (state.yearsToStay == 1 ? ' year' : ' years');
   document.getElementById('v-txt').textContent = (buyAhead ? 'Buying leads' : 'Renting leads') + ' by ' + fd(diff);
+
+  // Active assumptions, so screenshots explain themselves
+  const assume = [
+    state.prop13 ? 'Prop 13' : 'No Prop 13',
+    state.taxBenefits ? 'Tax benefits on' : 'Tax benefits off',
+    showInvest
+      ? parseFloat(state.investmentReturn).toFixed(1) + '% return' + (state.investDiff ? ', investing the difference' : '')
+      : 'No investment return',
+  ];
+  if (state.refi) assume.push('Refi yr ' + state.refiYear + ' at ' + parseFloat(state.refiRate).toFixed(2) + '%');
+  document.getElementById('v-assume').textContent = assume.join(' · ');
+
+  // Mobile mini-verdict bar
+  const mini = document.getElementById('mini-verdict');
+  mini.classList.toggle('bw', buyAhead);
+  mini.classList.toggle('rw', !buyAhead);
+  document.getElementById('mini-txt').textContent = (buyAhead ? 'Buying leads' : 'Renting leads') + ' by ' + fd(diff);
+  document.getElementById('mini-bk').textContent  = bky ? 'Breakeven: Yr ' + bky : 'No breakeven';
   const bkEl = document.getElementById('v-bkval');
   bkEl.style.fontSize = '';
   if (bky) {
@@ -1129,18 +1219,6 @@ function updateUI(redrawChart = true) {
     bkEl.style.fontSize = '14px';
   }
 
-  // Plain-English "why" — explains the verdict in terms of the time horizon
-  let why;
-  if (bky) {
-    why = buyAhead
-      ? `Buying breaks even at year ${bky}, and you plan to stay ${state.yearsToStay} — past that point, owning comes out ahead.`
-      : `Renting is cheaper for now; buying doesn't catch up until year ${bky}, after you'd have moved.`;
-  } else {
-    why = buyAhead
-      ? `Buying is ahead from the start and stays ahead across the full 30 years.`
-      : `Renting stays cheaper the whole way — buying never breaks even within 30 years at these assumptions.`;
-  }
-  document.getElementById('v-why').textContent = why;
   document.getElementById('leg-bk').style.display     = bky        ? 'flex' : 'none';
   document.getElementById('leg-invest').style.display = showInvest ? 'flex' : 'none';
   document.getElementById('leg-invest-txt').textContent = investLabel;
@@ -1162,6 +1240,7 @@ function updateUI(redrawChart = true) {
     { l: 'Maintenance &amp; repairs',v: d.cumMaint },
     { l: 'Mortgage insurance (PMI)', v: d.cumPMI },
     { l: 'Buy + sell closing costs', v: d.buyClosing + d.sellCosts },
+    { l: 'Refi closing costs',       v: d.cumRefiCost },
   ].filter(r => r.v > 100);
 
   // Tax savings shown as a green negative item
@@ -1195,9 +1274,10 @@ function updateUI(redrawChart = true) {
   document.getElementById('sm-lbl').textContent = 'Summary at year ' + state.yearsToStay;
 
   const rows = [
-    { l: 'Total paid out',    b: d.cumTotalSpent, r: d.cumRent },
-    ...(showInvest ? [{ l: useAfterTax ? 'Portfolio (after cap gains tax)' : 'Investment portfolio', b: 0, r: useAfterTax ? d.portfolioAfterTax : d.portfolio, hideB: true }] : []),
-    { l: 'Recovered at sale', b: d.saleProceeds,  r: 0 },
+    { l: showInvest ? 'Total paid out (incl. investing)' : 'Total paid out',
+      b: d.cumTotalSpent, r: showInvest ? d.cumRent + d.costBasis : d.cumRent },
+    { l: showInvest ? (useAfterTax ? 'Recovered (sale / portfolio after tax)' : 'Recovered (sale / portfolio)') : 'Recovered at sale',
+      b: d.saleProceeds, r: showInvest ? (useAfterTax ? d.portfolioAfterTax : d.portfolio) : 0 },
     { l: 'Net true cost',     b: d.netBuyCost,    r: rentCompare, bold: true },
     { l: 'Monthly equivalent',b: mB,              r: mR },
   ];
@@ -1331,10 +1411,12 @@ function bindSliders() {
     inp.addEventListener('input', () => {
       state[k] = Number(inp.value);
       if (el) el.textContent = fv(k, state[k]);
-      // Down payment display depends on home price, keep it live
+      // Down payment and maintenance displays depend on home price, keep them live
       if (k === 'homePrice') {
         const dpEl = document.getElementById('v-downPaymentPct');
         if (dpEl) dpEl.textContent = fv('downPaymentPct', state.downPaymentPct);
+        const mntEl = document.getElementById('v-maintenanceRate');
+        if (mntEl) mntEl.textContent = fv('maintenanceRate', state.maintenanceRate);
       }
       updateUI(k !== 'yearsToStay');
     });
@@ -1450,6 +1532,11 @@ makeEditable();
 loadSaved();
 collapseInputsOnMobile();
 updateUI();
+
+// Show the mobile mini-verdict bar only when the main verdict banner is off-screen
+new IntersectionObserver(entries => {
+  document.getElementById('mini-verdict').classList.toggle('show', !entries[0].isIntersecting);
+}, { threshold: 0 }).observe(document.getElementById('verdict'));
 </script>
 </body>
 </html>
