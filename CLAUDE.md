@@ -19,8 +19,10 @@ something, find the specific lines and edit them surgically — do not regenerat
 file. Full rewrites lose subtle hand-tuned details and make diffs unreadable. This is the
 established workflow and should be maintained.
 
-After any change, sanity-check that the calculation still runs (open in a browser; the
-chart should render without console errors).
+After any change, run `node test.js` (no dependencies; it loads the calc code straight
+out of `index.html`) and sanity-check in a browser that the chart renders without
+console errors. If you intentionally change the model, update the known values in
+`test.js` in the same commit.
 
 ## Code shape
 
@@ -33,6 +35,19 @@ chart should render without console errors).
 - `updateUI()` redraws everything. Sliders bind via `data-key` attributes.
 - Persistence: `localStorage` for save/load, plus the current config encodes into the URL
   hash for shareable links.
+
+## Calculation invariants
+
+- **The renter's net cost includes the money they invested:**
+  `rentNetCost = cumRent + costBasis − portfolio`. Subtracting the whole portfolio
+  (`cumRent − portfolio`) counts invested principal as if it were gain, and makes a 0.5%
+  return swing the verdict by $100K+.
+- **Year 0 lives on `data.year0` and is used only by the chart.** `data[0]` is year 1;
+  everything else (verdict, breakdown, summary, `findCrossover`) indexes the yearly
+  array and must never see year 0.
+- **The tax constants are 2026 figures** ($40,400 SALT cap, $32,200 / $16,100 federal
+  standard deduction, $750K federal / $1M California mortgage debt cap). Update them
+  together for a new tax year, and update the tax note in the UI to match.
 
 ## Design principles (don't violate without asking)
 
