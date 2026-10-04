@@ -480,6 +480,12 @@
         </div>
 
         <div class="srow">
+          <div class="slbl"><span class="slbl-text">Insurance &amp; HOA increase</span><span class="sval" id="v-costInflation"></span></div>
+          <input type="range" data-key="costInflation" min="0" max="10" step="0.5">
+          <div class="snote">Yearly rise in home insurance, HOA fees, and renter's insurance</div>
+        </div>
+
+        <div class="srow">
           <div class="slbl"><span class="slbl-text">Maintenance &amp; repairs</span><span class="sval" id="v-maintenanceRate"></span></div>
           <input type="range" data-key="maintenanceRate" min="0.2" max="3" step="0.1">
         </div>
@@ -559,6 +565,12 @@
           </div>
 
           <div class="srow">
+            <div class="slbl"><span class="slbl-text">Household income</span><span class="sval" id="v-income"></span></div>
+            <input type="range" data-key="income" min="0" max="1500000" step="10000">
+            <div class="snote">Used to estimate California income tax, which shares the federal SALT cap with property tax</div>
+          </div>
+
+          <div class="srow">
             <div class="slbl"><span class="slbl-text">Federal marginal income tax rate</span><span class="sval" id="v-federalRate"></span></div>
             <input type="range" data-key="federalRate" min="10" max="37" step="1">
           </div>
@@ -584,7 +596,7 @@
           </label>
 
           <div class="snote" style="padding:8px 10px;background:var(--bg-secondary);border-radius:var(--radius-md);line-height:1.6;margin-bottom:4px;">
-            Assumes itemizing under 2026 tax law. Federal interest deduction capped at interest on first $750K of loan. SALT deduction capped at $40,400 (phases down above ~$505K income — not modeled). Capital gains exclusion: $500K married / $250K single (primary residence, 2+ yr).
+            Assumes itemizing under 2026 tax law. Federal interest deduction capped at interest on first $750K of loan. State and local taxes (California income tax + property tax) share one $40,400 federal deduction cap, which shrinks above $505K income (to a $10K minimum). Property tax only helps federally to the extent income tax hasn't already filled the cap. Capital gains exclusion: $500K married / $250K single (primary residence, 2+ yr).
           </div>
         </div>
       </details>
@@ -726,59 +738,59 @@
 // ─────────────────────────────────────────────
 const DEFAULT = {
   homePrice: 1000000, downPaymentPct: 10, mortgageRate: 6.0, loanTerm: 30,
-  propertyTaxRate: 1.25, hoa: 0, insurance: 250, maintenanceRate: 1.0,
+  propertyTaxRate: 1.25, hoa: 0, insurance: 250, maintenanceRate: 1.0, costInflation: 3,
   buyingClosingPct: 3, sellingClosingPct: 5.5, pmiRate: 0.8,
   rent: 2800, rentIncrease: 4, renterInsurance: 25,
   appreciationRate: 4.0, yearsToStay: 7, prop13: true, investmentReturn: 0, investDiff: false,
   refi: false, refiYear: 5, refiRate: 5.5, refiCost: 5000,
-  taxBenefits: false, filingStatus: 'married', federalRate: 24, stateRate: 9.3, capGainsRate: 15, investCgTax: true,
+  taxBenefits: false, filingStatus: 'married', income: 250000, federalRate: 24, stateRate: 9.3, capGainsRate: 15, investCgTax: true,
 };
 
 const PRESETS = [
   { label: 'East Bay starter', values: {
     homePrice:1000000, downPaymentPct:10, mortgageRate:6.0, loanTerm:30,
-    propertyTaxRate:1.25, hoa:0, insurance:250, maintenanceRate:1.0,
+    propertyTaxRate:1.25, hoa:0, insurance:250, maintenanceRate:1.0, costInflation:3,
     buyingClosingPct:3, sellingClosingPct:5.5, pmiRate:0.8,
     rent:3800, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:7, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
-    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
+    taxBenefits:false, filingStatus:'married', income:250000, federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Berkeley / hills', values: {
     homePrice:1500000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
-    propertyTaxRate:1.3, hoa:0, insurance:400, maintenanceRate:1.0,
+    propertyTaxRate:1.3, hoa:0, insurance:400, maintenanceRate:1.0, costInflation:3,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:5000, rentIncrease:4, renterInsurance:30,
     appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
-    taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:15, investCgTax:true,
+    taxBenefits:false, filingStatus:'married', income:450000, federalRate:32, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Rockridge / Piedmont', values: {
     homePrice:1800000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
-    propertyTaxRate:1.3, hoa:0, insurance:350, maintenanceRate:1.0,
+    propertyTaxRate:1.3, hoa:0, insurance:350, maintenanceRate:1.0, costInflation:3,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:6500, rentIncrease:4, renterInsurance:30,
     appreciationRate:4.5, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
-    taxBenefits:false, filingStatus:'married', federalRate:32, stateRate:9.3, capGainsRate:20, investCgTax:true,
+    taxBenefits:false, filingStatus:'married', income:500000, federalRate:32, stateRate:9.3, capGainsRate:20, investCgTax:true,
   }},
   { label: 'Alameda', values: {
     homePrice:1250000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
-    propertyTaxRate:1.2, hoa:0, insurance:320, maintenanceRate:1.2,
+    propertyTaxRate:1.2, hoa:0, insurance:320, maintenanceRate:1.2, costInflation:3,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:3600, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:8, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
-    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
+    taxBenefits:false, filingStatus:'married', income:300000, federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
   { label: 'Livermore', values: {
     homePrice:1150000, downPaymentPct:20, mortgageRate:6.0, loanTerm:30,
-    propertyTaxRate:1.35, hoa:0, insurance:300, maintenanceRate:1.0,
+    propertyTaxRate:1.35, hoa:0, insurance:300, maintenanceRate:1.0, costInflation:3,
     buyingClosingPct:3, sellingClosingPct:5.0, pmiRate:0,
     rent:3800, rentIncrease:4, renterInsurance:25,
     appreciationRate:4.0, yearsToStay:10, prop13:true, investmentReturn:0, investDiff:false,
     refi:false, refiYear:5, refiRate:5.5, refiCost:5000,
-    taxBenefits:false, filingStatus:'married', federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
+    taxBenefits:false, filingStatus:'married', income:275000, federalRate:24, stateRate:9.3, capGainsRate:15, investCgTax:true,
   }},
 ];
 
@@ -810,6 +822,8 @@ function fv(key, val) {
     case 'propertyTaxRate':   return parseFloat(val).toFixed(2) + '% / yr';
     case 'hoa':               return val == 0 ? 'None' : fd(val) + '/mo';
     case 'insurance':         return fd(val) + '/mo';
+    case 'costInflation':     return parseFloat(val).toFixed(1) + '% / yr';
+    case 'income':            return val == 0 ? 'Not set' : fd(val) + '/yr';
     case 'maintenanceRate':   return parseFloat(val).toFixed(1) + '% / yr (' + fd(state.homePrice * val / 100) + '/yr)';
     case 'buyingClosingPct':  return parseFloat(val).toFixed(2) + '%';
     case 'sellingClosingPct': return parseFloat(val).toFixed(2) + '%';
@@ -839,9 +853,26 @@ function monthlyPayment(principal, annualRatePct, termYears) {
   return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
 }
 
+// California income tax on wages (2025 FTB brackets — latest published), after the
+// CA standard deduction. Brackets are single; married doubles every threshold.
+// Includes the 1% behavioral health tax over $1M (not doubled for married).
+const CA_BRACKETS = [[11079, 1], [26264, 2], [41452, 4], [57542, 6], [72724, 8],
+                     [371479, 9.3], [445771, 10.3], [742953, 11.3], [Infinity, 12.3]];
+function caIncomeTax(income, filingStatus) {
+  const mult    = filingStatus === 'married' ? 2 : 1;
+  const taxable = Math.max(0, income - (filingStatus === 'married' ? 11412 : 5706));
+  let tax = 0, prev = 0;
+  for (const [top, rate] of CA_BRACKETS) {
+    const cap = top * mult;
+    if (taxable > prev) tax += (Math.min(taxable, cap) - prev) * rate / 100;
+    prev = cap;
+  }
+  return tax + Math.max(0, taxable - 1000000) * 0.01;
+}
+
 function generateData(p) {
   const { homePrice, downPaymentPct, mortgageRate, loanTerm,
-          propertyTaxRate, hoa, insurance, maintenanceRate,
+          propertyTaxRate, hoa, insurance, costInflation, income, maintenanceRate,
           buyingClosingPct, sellingClosingPct, pmiRate,
           rent, rentIncrease, renterInsurance,
           appreciationRate, prop13, investmentReturn,
@@ -862,12 +893,16 @@ function generateData(p) {
   let portfolio = dp + buyC; // renter invests down payment + closing costs on day one
   let costBasis = dp + buyC; // tracks total contributions for investment cap gains calc
 
-  // Tax benefit constants (2026 tax law: OBBBA raised SALT cap; single filers get the full cap)
+  // Tax benefit constants (2026 federal law: OBBBA raised SALT cap; single filers get the full cap)
   const fedDebtCap       = 750000;  // federal: interest deductible on first $750K of acquisition debt
   const caDebtCap        = 1000000; // California never adopted the $750K limit; still $1M
-  const saltCap          = 40400; // 2026: $40,400 for both single and MFJ; phases down above ~$505K MAGI (not modeled)
+  // 2026: $40,400 for both single and MFJ, cut by 30% of income over $505K, never below $10K
+  const saltCap          = Math.max(10000, 40400 - 0.3 * Math.max(0, (income || 0) - 505000));
   const stdDedFed        = filingStatus === 'married' ? 32200 : 16100;
-  const stdDedCA         = filingStatus === 'married' ? 11080 : 5540;
+  const stdDedCA         = filingStatus === 'married' ? 11412 : 5706; // 2025, latest published
+  // State income tax uses up SALT room whether you buy or rent (held flat in today's dollars)
+  const stateIncomeTax   = caIncomeTax(income || 0, filingStatus);
+  const renterFedDed     = Math.max(stdDedFed, Math.min(stateIncomeTax, saltCap));
   const cgExclusion      = filingStatus === 'married' ? 500000 : 250000;
 
   let currentPi = pi;  // monthly payment — updated at refinance
@@ -885,10 +920,11 @@ function generateData(p) {
 
     // Monthly costs approximated at year midpoint
     const mTax  = assessedMid * propertyTaxRate / 100 / 12;
-    const mHOA  = hoa;        // hoa is already a monthly value in state
-    const mIns  = insurance;  // insurance is monthly
+    const costGrowth = Math.pow(1 + (costInflation || 0) / 100, y - 1);
+    const mHOA  = hoa * costGrowth;        // hoa is already a monthly value in state
+    const mIns  = insurance * costGrowth;  // insurance is monthly
     const mMnt  = hvMid * maintenanceRate / 100 / 12;
-    const mRent = rent * Math.pow(1 + rentIncrease / 100, y - 1) + renterInsurance;
+    const mRent = rent * Math.pow(1 + rentIncrease / 100, y - 1) + renterInsurance * costGrowth;
 
     // Refinance: recalculate payment at the chosen year
     if (refi && !refiDone && y === refiYear && bal > 1) {
@@ -949,9 +985,10 @@ function generateData(p) {
     // Tax savings from deductions
     let yTaxSavings = 0;
     if (taxBenefits) {
-      // Federal: interest on first $750K of balance + property tax up to SALT cap, minus standard deduction
-      const fedItemized        = yIdedFed + Math.min(yT, saltCap);
-      const fedSavings         = Math.max(0, fedItemized - stdDedFed) * (federalRate / 100);
+      // Federal: interest on first $750K of balance + state income tax and property tax up to the
+      // SALT cap — compared with what a renter would deduct anyway (standard, or income tax alone)
+      const fedItemized        = yIdedFed + Math.min(stateIncomeTax + yT, saltCap);
+      const fedSavings         = Math.max(0, Math.max(stdDedFed, fedItemized) - renterFedDed) * (federalRate / 100);
       // CA: interest on first $1M of balance + full property tax, minus CA standard deduction
       const caItemized         = yIdedCA + yT;
       const caSavings          = Math.max(0, caItemized - stdDedCA) * (stateRate / 100);
@@ -1427,7 +1464,7 @@ function bindSliders() {
 // Presets & reset
 // ─────────────────────────────────────────────
 function loadPreset(i) {
-  state = { ...PRESETS[i].values };
+  state = { ...DEFAULT, ...PRESETS[i].values };
   applyStateToSliders();
   updateUI();
 }
@@ -1457,7 +1494,7 @@ function renderSaved() {
 }
 
 function loadCfg(i) {
-  state = { ...savedConfigs[i].values };
+  state = { ...DEFAULT, ...savedConfigs[i].values };
   applyStateToSliders();
   updateUI();
 }

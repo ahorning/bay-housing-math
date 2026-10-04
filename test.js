@@ -7,8 +7,8 @@ const vm = require('vm');
 const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
 const src  = html.slice(html.indexOf('const DEFAULT = {'), html.indexOf('const vertLinePlugin'));
 const ctx  = {};
-vm.runInNewContext(src + '\n;Object.assign(this, { DEFAULT, PRESETS, monthlyPayment, generateData });', ctx);
-const { DEFAULT, PRESETS, monthlyPayment, generateData } = ctx;
+vm.runInNewContext(src + '\n;Object.assign(this, { DEFAULT, PRESETS, monthlyPayment, generateData, caIncomeTax });', ctx);
+const { DEFAULT, PRESETS, monthlyPayment, generateData, caIncomeTax } = ctx;
 
 let failed = 0;
 function check(name, ok, detail = '') {
@@ -56,8 +56,19 @@ for (const extra of [{}, { investmentReturn: 4, investDiff: true }, { taxBenefit
 // 4. Known values: starter preset, tax benefits off (update deliberately if the model changes)
 {
   const d = generateData(starter)[starter.yearsToStay - 1];
-  const expect = { netBuyCost: 357839, cumRent: 362262, goneAtSale: 673771, saleProceeds: 436801 };
+  const expect = { netBuyCost: 359826, cumRent: 362461, goneAtSale: 675758, saleProceeds: 436801 };
   for (const [k, v] of Object.entries(expect)) check(`starter year 7 ${k} = ${v}`, near(d[k], v), `got ${d[k]}`);
+}
+
+// 5. SALT: state income tax and property tax share one capped federal deduction
+{
+  check('CA income tax, $250K married = $15,066', near(caIncomeTax(250000, 'married'), 15066));
+  // stateRate 0 isolates the federal side; once income tax fills the cap, property tax adds nothing
+  const fed = (income, propertyTaxRate) => generateData({ ...starter, taxBenefits: true, stateRate: 0,
+    income, propertyTaxRate })[6].cumTaxSavings;
+  check('below the cap, higher property tax → more federal savings', fed(250000, 1.5) > fed(250000, 1.0));
+  check('cap full at $450K: property tax adds no federal savings', fed(450000, 1.5) === fed(450000, 1.0));
+  check('cap shrinks above $505K: $600K saves less than $450K', fed(600000, 1.0) < fed(450000, 1.0));
 }
 
 console.log(failed ? `\n${failed} failed` : '\nall passed');

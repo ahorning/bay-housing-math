@@ -47,7 +47,15 @@ console errors. If you intentionally change the model, update the known values i
   array and must never see year 0.
 - **The tax constants are 2026 figures** ($40,400 SALT cap, $32,200 / $16,100 federal
   standard deduction, $750K federal / $1M California mortgage debt cap). Update them
-  together for a new tax year, and update the tax note in the UI to match.
+  together for a new tax year, and update the tax note in the UI to match. The
+  California brackets (`CA_BRACKETS`) and CA standard deduction are 2025, the latest the
+  FTB has published; move them forward when the next schedule comes out.
+- **SALT is shared.** California income tax (from `income`) and property tax compete for
+  one federal cap, which shrinks by 30% of income over $505K (to a $10K minimum). The
+  buyer's federal benefit is measured against what a renter would deduct anyway
+  (`renterFedDed`), not against zero.
+- **Loading a preset or saved config merges onto `DEFAULT`**, so configs saved before a
+  field existed still load. Keep that when adding fields.
 
 ## Design principles (don't violate without asking)
 
